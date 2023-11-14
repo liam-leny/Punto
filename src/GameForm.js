@@ -15,11 +15,13 @@ function GameForm(props) {
   const [tabJoin, setTabJoin] = useState(false);
   const [join, setJoin] = useState(false);
   const [nbRound, setNbRound] = useState(2);
-  const [players, setPlayers] = useState(new Array())
+  const [players, setPlayers] = useState(new Array());
   const [id, setId] = useState(undefined);
+  const [gameLaunch, setGameLaunch] = useState(false);
+
 
   const toastRef = useRef();
-  const socket = useRef(null); 
+  const socket = useRef(null);
 
   useEffect(() => {
     socket.current = io('http://localhost:5000');
@@ -45,6 +47,7 @@ function GameForm(props) {
         duree: null,
       });
       const partieId = response.data.partie_id;
+      socket.current.emit('joinRoom', partieId);
       setId(partieId)
       setTabJoin(false);
       setTabCreate(true);
@@ -59,9 +62,6 @@ function GameForm(props) {
     console.log(pseudo)
     setPlayers(prevPlayers => [...prevPlayers, pseudo]);
   };
-  
-  
-
 
   const tabJoinGame = () => {
     setTabCreate(false);
@@ -72,6 +72,7 @@ function GameForm(props) {
     if (id) {
       // toastRef.current.show({ severity: 'info', summary: 'Recherche', detail: `Vérification de l'existence de la partie` });
       try {
+        // socket.current.emit('joinRoom', Number(id));
         const response = await axios.post(`http://localhost:5000/api/partie/${id}/join`, {
           pseudo: props.pseudo,
         });
@@ -83,11 +84,13 @@ function GameForm(props) {
     }
   };
 
-
-
-
   const launchGame = () => {
-    return <GameBoard />
+    addNewPlayer("Test")
+    setGameLaunch(true)
+  }
+
+  if (gameLaunch) {
+    return <GameBoard players={players} nbRound={nbRound} />;
   }
 
   return (

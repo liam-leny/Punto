@@ -9,7 +9,7 @@ function Lignes(props) {
 
     let cases = [];
     for (let numCase = 0; numCase < props.tT; numCase++) {
-      cases.push(<Cases key={numCase} i={props.i} j={numCase} tT={props.tT}/>)
+      cases.push(<Cases key={numCase} i={props.i} j={numCase} tT={props.tT} currentCard={props.currentCard}/>)
     }
     return cases;
   }

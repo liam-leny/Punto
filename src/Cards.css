@@ -1,0 +1,33 @@
+.yellow {
+    background-color: yellow;
+    color: black
+}
+
+.blue{
+    background-color: blue;
+    color: white
+}
+
+.green {
+    background-color: green;
+    color: white
+}
+
+.red{
+    background-color: red;
+    color: white
+}
+
+.number-board {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.number-cards {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+}

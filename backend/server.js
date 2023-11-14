@@ -85,13 +85,20 @@ app.post('/api/partie/:id/join', (req, res) => {
       return;
     }
 
+    console.log(partie_id)
     io.emit('nouveauJoueur', pseudo);
+    // io.to(partie_id).emit('nouveauJoueur', pseudo);
     res.json({ success: true });
   });
 });
 
 io.on('connection', (socket) => {
   console.log('Nouvelle connexion socket :', socket.id);
+  socket.on('joinRoom', (partie_id) => {
+    console.log(partie_id)
+    socket.join(partie_id);
+    console.log(socket.rooms);
+  });
 });
 
 
