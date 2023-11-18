@@ -35,7 +35,7 @@
   font-size: 0;
 }
 
-.ligne {
+.row {
   display: flex;
   height: 100%;
   border: black;
@@ -49,7 +49,7 @@
   line-height: 12vw;
 }
 
-.case {
+.square {
   position: relative;
   width: 100%;
   border: 1px solid #999;

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import "./GameBoard.css"
 import "./Cards.css"
-import Lignes from "./Lignes";
+import Row from "./Row";
 
 function GameBoard(props) {
-  const [plateau, setPlateau] = useState(new Array(6).fill([]).map(() => []));
+  const [board, setBoard] = useState(new Array(6).fill([]).map(() => []));
   const [playerNumber] = useState(props.players.length);
   const [cards, setCards] = useState(new Array(playerNumber));
   const [currentCard, setCurrentCard] = useState(new Array(2).fill([]).map(() => []));
@@ -15,7 +15,7 @@ function GameBoard(props) {
 
   useEffect(() => {
     if (cardsDistributionComplete) {
-      affichageCards();
+      CardsDisplay();
     }
   }, [playerTurn, cardsDistributionComplete]);
 
@@ -113,10 +113,10 @@ function GameBoard(props) {
 
     // Vérifier la ligne
     let rowCount = 1;
-    for (let i = y - 1; i >= 0 && plateau[x][i] !== undefined && plateau[x][i][0] === currentColor; i--) {
+    for (let i = y - 1; i >= 0 && board[x][i] !== undefined && board[x][i][0] === currentColor; i--) {
       rowCount++;
     }
-    for (let i = y + 1; i < plateau[x].length && plateau[x][i] !== undefined && plateau[x][i][0] === currentColor; i++) {
+    for (let i = y + 1; i < board[x].length && board[x][i] !== undefined && board[x][i][0] === currentColor; i++) {
       rowCount++;
     }
     if (rowCount >= nbCardsSeries) {
@@ -126,10 +126,10 @@ function GameBoard(props) {
 
     // Vérifier la colonne
     let columnCount = 1;
-    for (let i = x - 1; i >= 0 && plateau[i][y] !== undefined && plateau[i][y][0] === currentColor; i--) {
+    for (let i = x - 1; i >= 0 && board[i][y] !== undefined && board[i][y][0] === currentColor; i--) {
       columnCount++;
     }
-    for (let i = x + 1; i < plateau.length && plateau[i][y] !== undefined && plateau[i][y][0] === currentColor; i++) {
+    for (let i = x + 1; i < board.length && board[i][y] !== undefined && board[i][y][0] === currentColor; i++) {
       columnCount++;
     }
     if (columnCount >= nbCardsSeries) {
@@ -142,7 +142,7 @@ function GameBoard(props) {
     for (let i = 1; i < nbCardsSeries; i++) {
       const newRow = x - i;
       const newCol = y - i;
-      if (newRow >= 0 && newCol >= 0 && plateau[newRow][newCol] !== undefined && plateau[newRow][newCol][0] === currentColor) {
+      if (newRow >= 0 && newCol >= 0 && board[newRow][newCol] !== undefined && board[newRow][newCol][0] === currentColor) {
         mainDiagonal++;
       } else {
         break;
@@ -151,13 +151,13 @@ function GameBoard(props) {
     for (let i = 1; i < nbCardsSeries; i++) {
       const newRow = x + i;
       const newCol = y + i;
-      if (newRow < plateau.length && newCol < plateau.length && plateau[newRow][newCol] !== undefined && plateau[newRow][newCol][0] === currentColor) {
+      if (newRow < board.length && newCol < board.length && board[newRow][newCol] !== undefined && board[newRow][newCol][0] === currentColor) {
         mainDiagonal++;
       } else {
         break;
       }
     }
-    console.log('mainDiagonal', mainDiagonal)
+    // console.log('mainDiagonal', mainDiagonal)
     if (mainDiagonal >= nbCardsSeries) {
       console.log('true')
       return true;
@@ -168,7 +168,7 @@ function GameBoard(props) {
     for (let i = 1; i < nbCardsSeries; i++) {
       const newRow = x - i;
       const newCol = y + i;
-      if (newRow >= 0 && newCol < plateau.length && plateau[newRow][newCol] !== undefined && plateau[newRow][newCol][0] === currentColor) {
+      if (newRow >= 0 && newCol < board.length && board[newRow][newCol] !== undefined && board[newRow][newCol][0] === currentColor) {
         secondaryDiagonal++;
       } else {
         break;
@@ -177,13 +177,13 @@ function GameBoard(props) {
     for (let i = 1; i < nbCardsSeries; i++) {
       const newRow = x + i;
       const newCol = y - i;
-      if (newRow < plateau.length && newCol >= 0 && plateau[newRow][newCol] !== undefined && plateau[newRow][newCol][0] === currentColor) {
+      if (newRow < board.length && newCol >= 0 && board[newRow][newCol] !== undefined && board[newRow][newCol][0] === currentColor) {
         secondaryDiagonal++;
       } else {
         break;
       }
     }
-    console.log('secondaryDiagonal', secondaryDiagonal)
+    // console.log('secondaryDiagonal', secondaryDiagonal)
     if (secondaryDiagonal >= nbCardsSeries) {
       console.log('true')
       return true;
@@ -201,10 +201,10 @@ function GameBoard(props) {
    * Permet d'afficher le plateau 
    * @returns Un tableau contenant toutes les lignes du plateau
    */
-  const affichagePlateau = () => {
+  const BoardDisplay = () => {
     let rows = [];
     for (let i = 0; i < 6; i++) {
-      rows.push(<Lignes key={i} i={i} tT={6} currentCard={currentCard} plateau={plateau} setPlateau={setPlateau} checkVictory={checkVictory} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} />)
+      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} setBoard={setBoard} checkVictory={checkVictory} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} />)
     }
     return rows;
   }
@@ -213,7 +213,7 @@ function GameBoard(props) {
    * Permet d'afficher la carte du joueur qui doit jouer
    * @returns La carte du joueur qui doit jouer
    */
-  const affichageCards = () => {
+  const CardsDisplay = () => {
     console.log(cards)
     const c = cards[0][0]
     setCurrentCard(c)
@@ -222,9 +222,9 @@ function GameBoard(props) {
   return (
     <div className="container">
       <div className="board">
-        {affichagePlateau()}
+        {BoardDisplay()}
       </div>
-      <div className={`case number-cards ${currentCard[0]}`}>
+      <div className={`square number-cards ${currentCard[0]}`}>
         {currentCard[1]}
       </div>
     </div>
