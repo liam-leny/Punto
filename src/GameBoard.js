@@ -1,102 +1,40 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./GameBoard.css"
 import "./Cards.css"
 import Row from "./Row";
+
+import io from 'socket.io-client';
 
 function GameBoard(props) {
   const [board, setBoard] = useState(new Array(6).fill([]).map(() => []));
   const [playerNumber] = useState(props.players.length);
   const [cards, setCards] = useState(new Array(playerNumber));
-  const [currentCard, setCurrentCard] = useState(new Array(2).fill([]).map(() => []));
+  const [currentCard, setCurrentCard] = useState(['white', '']);
   const [colors, setColors] = useState(['red', 'yellow', 'blue', 'green']);
   const [playerTurn, setPlayerTurn] = useState(0);
   const [cardsDistributionComplete, setCardsDistributionComplete] = useState(false);
 
-
-  useEffect(() => {
-    if (cardsDistributionComplete) {
-      CardsDisplay();
-    }
-  }, [playerTurn, cardsDistributionComplete]);
+  const socket = useRef(null);
 
 
   useEffect(() => {
-    cardsDistribution()
+    socket.current = io('http://localhost:5000');
+    setCurrentCard(props.cards[0][0])
+    socket.current.on('newCard', (data) => {
+      console.log('newCard', data)
+      const tempPlateau = [...board]
+      tempPlateau[data.x][data.y] = props.cards[0][0];
+      setBoard(tempPlateau)
+      console.log(board)
+    });
+  
+
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+    };
   }, []);
-
-  const getRandomInt = (min, max) => {
-    return Math.floor(Math.random() * (max - min + 1) + min); // The maximum is inclusive and the minimum is inclusive
-  }
-
-  /**
-   * Permet de mélanger le tableau initial des couleurs
-   */
-  const mixColors = () => {
-    const tempColors = [...colors]
-    const randomColors = []
-    for (let i = 3; i > -1; i--) {
-      const random = getRandomInt(0, i)
-      const color = tempColors[random]
-      tempColors.splice(random, 1);
-      randomColors.push(color)
-    }
-    setColors(randomColors);
-  }
-
-
-  /**
-   * Permet de distribuer aléatoirement les cartes au début de la partie
-   */
-  const cardsDistribution = () => {
-    mixColors()
-    const randomCards = []
-
-    // Générer les cartes
-    for (let i = 1; i <= 9; i++) {
-      colors.forEach(color => {
-        randomCards.push([color, i]);
-        randomCards.push([color, i]);
-      });
-    }
-
-    // Mélanger les cartes
-    for (let i = randomCards.length - 1; i > 0; i--) {
-      const r = getRandomInt(0, i);
-      [randomCards[i], randomCards[r]] = [randomCards[r], randomCards[i]];
-    }
-
-    const playersCards = new Array(playerNumber).fill([]).map(() => []);
-
-    if (playerNumber === 2) {
-      // Distribuer deux couleurs à chaque joueur
-      playersCards[0] = playersCards[0].concat(randomCards.filter(card => (card[0] === colors[0]) || (card[0] === colors[1])));
-      playersCards[1] = playersCards[1].concat(randomCards.filter(card => (card[0] === colors[2]) || (card[0] === colors[3])));
-    } else if (playerNumber === 3) {
-      // Distribuer une couleur à chaque joueur
-      for (let i = 0; i < playerNumber; i++) {
-        playersCards[i] = playersCards[i].concat(randomCards.filter(card => card[0] === colors[i]));
-      }
-      // Distribuer 6 cartes de la quatrième couleur à chaque joueur
-      playersCards[0] = playersCards[0].concat(randomCards.filter(card => card[0] === colors[3]).slice(0, 6));
-      playersCards[1] = playersCards[1].concat(randomCards.filter(card => card[0] === colors[3]).slice(6, 12));
-      playersCards[2] = playersCards[2].concat(randomCards.filter(card => card[0] === colors[3]).slice(12, 18));
-      // Mélanger les cartes
-      for (let i = 0; i < playersCards.length; i++) {
-        for (let j = playersCards[0].length - 1; j > 0; j--) {
-          const r = getRandomInt(0, j);
-          [playersCards[i][j], playersCards[i][r]] = [playersCards[i][r], playersCards[i][j]]; // Échanger les cartes pour les mélanger
-        }
-      }
-    } else if (playerNumber === 4) {
-      // Distribuer une couleur à chaque joueur
-      for (let i = 0; i < playerNumber; i++) {
-        playersCards[i] = playersCards[i].concat(randomCards.filter(card => card[0] === colors[i]));
-      }
-    }
-
-    setCards(playersCards)
-    setCardsDistributionComplete(true)
-  }
 
   /**
    * Permet de savoir si il y a un vainqueur
@@ -105,6 +43,7 @@ function GameBoard(props) {
    * @returns false si il n'y a pas de gagnant, true sinon
    */
   function checkVictory(x, y) {
+    socket.current.emit('newCardPlaced', {x:x, y:y});
     const currentColor = currentCard[0];
     let nbCardsSeries = 4;
     if (playerNumber === 2) {

@@ -1,36 +1,28 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import "./Cards.css";
 
 import { Toast } from 'primereact/toast';
 
 
 function Square(props) {
-  const [isCardVisible, setIsCardVisible] = useState(false);
   const toastRef = useRef();
 
 
-  useEffect(() => {
-    if (isCardVisible) {
-      updateBoard();
-    }
-  }, [isCardVisible]);
-
   const addCard = () => {
-    console.log(props.board)
+    console.log('addCard', props.currentCard, props.board)
     const x = props.i;
     const y = props.j;
     const board = props.board;
     console.log('x : ', x, 'y : ', y)
-    console.log(board)
 
     if (props.playerTurn === 0) {
-      setIsCardVisible(true)
+      validCard()
     } else {
       // Vérifier si la carte est bien superposée à une carte de valeur inférieur
       if (board[x][y] !== undefined) {
         const cardOnBoard = board[x][y];
         if (props.currentCard[1] > cardOnBoard[1]) {
-          setIsCardVisible(true);
+          validCard()
         } else {
           toastRef.current.show({ severity: 'error', summary: 'Superposition impossible', detail: 'Votre carte doit avoir une valeur supérieur à celle déjà présente sur le board' });
         }
@@ -45,28 +37,25 @@ function Square(props) {
         ((x > 0 && y >= 0) && (board[x - 1][y + 1] !== undefined)) || // Juxtaposée dans le coin inférieur gauche
         ((x > 0 && y < board.length) && (board[x - 1][y - 1] !== undefined)) // Juxtaposée dans le coin inférieur droit
       ) {
-        setIsCardVisible(true);
+        validCard()
       } else {
         toastRef.current.show({ severity: 'error', summary: 'Mouvement impossible', detail: 'Votre carte doit être juxtaposée ou superposée à une autre carte' });
       }
     }
-    props.handlePlayerTurnChange()
   };
 
-  const updateBoard = () => {
-    const tempPlateau = [...props.board]
-    tempPlateau[props.i][props.j] = props.currentCard;
-    props.setBoard(tempPlateau)
+  const validCard = () => {
     props.checkVictory(props.i, props.j)
+    props.handlePlayerTurnChange()
   }
 
   return (
     <div
-      className={`square number-board ${isCardVisible ? props.currentCard[0] : ""}`}
+      className={`square number-board ${props.board[props.i][props.j] === undefined ? "" : props.board[props.i][props.j][0]}`}
       onClick={addCard}
     >
       <Toast ref={toastRef} />
-      {isCardVisible && props.currentCard[1]}
+      {props.board[props.i][props.j] === undefined ? "" : props.board[props.i][props.j][1]}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import "./Form.css"
 
 import axios from 'axios';
 import io from 'socket.io-client';
+import distributeCards from './gameUtils';
+
 
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
@@ -18,6 +20,8 @@ function GameForm(props) {
   const [players, setPlayers] = useState(new Array());
   const [id, setId] = useState(undefined);
   const [gameLaunch, setGameLaunch] = useState(false);
+  const [cards, setCards] = useState(new Array(players.length));
+
 
 
   const toastRef = useRef();
@@ -29,6 +33,11 @@ function GameForm(props) {
       console.log(`Nouveau joueur rejoint : ${pseudo}`);
       addNewPlayer(pseudo)
       console.log(players)
+    });
+
+    socket.current.on('gameStarted', (cards) => {
+      setCards(cards)
+      setGameLaunch(true);
     });
 
     return () => {
@@ -72,7 +81,7 @@ function GameForm(props) {
     if (id) {
       // toastRef.current.show({ severity: 'info', summary: 'Recherche', detail: `Vérification de l'existence de la partie` });
       try {
-        // socket.current.emit('joinRoom', Number(id));
+        socket.current.emit('joinRoom', Number(id));
         const response = await axios.post(`http://localhost:5000/api/partie/${id}/join`, {
           pseudo: props.pseudo,
         });
@@ -86,11 +95,19 @@ function GameForm(props) {
 
   const launchGame = () => {
     addNewPlayer("Test")
-    setGameLaunch(true)
-  }
+    console.log('launchGame', id)
+    const cards = distributeCards(players.length + 1)
+    if (id) {
+      console.log(cards)
+      console.log(id)
+      socket.current.emit('startGame', {id:id, cards:cards});
+    } else {
+      console.error('Erreur: id n\'est pas défini');
+    }
+  };
 
   if (gameLaunch) {
-    return <GameBoard players={players} nbRound={nbRound} />;
+    return <GameBoard players={players} nbRound={nbRound} partie_id={id} cards={cards} />;
   }
 
   return (

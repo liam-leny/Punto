@@ -1,34 +1,17 @@
-require('dotenv').config(); // Charge les variables d'environnement depuis le fichier .env
-
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const socketIO = require('socket.io');
-const mysql = require('mysql2');
+const { initializeSocket, getSocket } = require('./socket');
+const db = require('./mysql/mysql');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server, { cors: {
-  origin: "http://localhost:3000"
-}});
+const io = initializeSocket(server);
 
 app.use(express.json());
 app.use(cors());
-
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-});
-
-db.connect(err => {
-  if (err) {
-    console.error('Erreur de connexion à la base de données :', err);
-    return;
-  }
-  console.log('Connecté à la base de données MySQL');
-});
+app.use(express.json());
+app.use(cors());
 
 // Route pour récupérer toutes les parties
 app.get('/api/partie', (req, res) => {
@@ -57,7 +40,7 @@ app.post('/api/partie', (req, res) => {
       return;
     }
 
-    const partie_id = result.insertId; // Récupérer l'id de la partie nouvellement créée
+    const partie_id = result.insertId;
 
     // Insérer le joueur créateur dans la table Joueur avec l'id de la partie
     db.query('INSERT INTO Joueur (pseudo, partie_id) VALUES (?, ?)', [req.body.pseudo, partie_id], (err, result) => {
@@ -67,6 +50,8 @@ app.post('/api/partie', (req, res) => {
         return;
       }
 
+      getSocket().emit('joinRoom', partie_id);
+
       res.json({ partie_id });
     });
   });
@@ -74,7 +59,7 @@ app.post('/api/partie', (req, res) => {
 
 // Route pour rejoindre une partie
 app.post('/api/partie/:id/join', (req, res) => {
-  const partie_id = req.params.id;
+  const partie_id = Number(req.params.id);
   const pseudo = req.body.pseudo;
 
   // Insérer le joueur dans la table Joueur avec l'id de la partie
@@ -85,22 +70,10 @@ app.post('/api/partie/:id/join', (req, res) => {
       return;
     }
 
-    console.log(partie_id)
-    io.emit('nouveauJoueur', pseudo);
-    // io.to(partie_id).emit('nouveauJoueur', pseudo);
+    getSocket().to(partie_id).emit('nouveauJoueur', pseudo);
     res.json({ success: true });
   });
 });
-
-io.on('connection', (socket) => {
-  console.log('Nouvelle connexion socket :', socket.id);
-  socket.on('joinRoom', (partie_id) => {
-    console.log(partie_id)
-    socket.join(partie_id);
-    console.log(socket.rooms);
-  });
-});
-
 
 
 
