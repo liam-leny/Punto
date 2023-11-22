@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const { initializeSocket, getSocket } = require('./socket');
+const { initializeSocket } = require('./socket');
 const db = require('./mysql/mysql');
 
 const app = express();
@@ -27,7 +27,6 @@ app.get('/api/partie', (req, res) => {
 
 // Route pour créer une nouvelle partie
 app.post('/api/partie', (req, res) => {
-  console.log(req.body)
   const date_creation = new Date();
   const nombre_de_manches = req.body.nombre_de_manches;
   const duree = null;
@@ -50,8 +49,6 @@ app.post('/api/partie', (req, res) => {
         return;
       }
 
-      getSocket().emit('joinRoom', partie_id);
-
       res.json({ partie_id });
     });
   });
@@ -70,7 +67,6 @@ app.post('/api/partie/:id/join', (req, res) => {
       return;
     }
 
-    getSocket().to(partie_id).emit('nouveauJoueur', pseudo);
     res.json({ success: true });
   });
 });

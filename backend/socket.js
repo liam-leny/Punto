@@ -17,42 +17,51 @@ function initializeSocket(server) {
             console.log(socket.rooms);
         });
 
+        socket.on('newPlayer', (data) => {
+            io.to(data.id).emit('newPlayer', data.pseudo);
+        });
+
         socket.on('newCardPlaced', (data) => {
-            io.emit('newCard', data)
+            const players = data.players;
+            const cards = data.cards;
+            const currentPlayer = data.currentPlayer;
+            const currentPlayerIndex = players.indexOf(currentPlayer)
+            console.log('playerIndex', currentPlayerIndex)
+            console.log('currentCard', data.currentCard)
+            const currentCardIndex = data.currentCardIndex;
+            let newPlayerIndex = currentPlayerIndex + 1
+            let newCardIndex = currentCardIndex;
+            // Si c'est le dernier joueur qui a joué alors c'est de nouveau au premier de jouer
+            if (currentPlayerIndex === players.length - 1) {
+                newPlayerIndex = 0;
+                newCardIndex = currentCardIndex + 1;
+            }
+            console.log('currentCardIndex', currentCardIndex)
+            console.log('newPlayerIndex', newPlayerIndex)
+
+            const newCurrentCard = cards[newPlayerIndex][newCardIndex];
+            console.log(newCurrentCard)
+
+            io.emit('newCard', { x: data.x, y: data.y, newCurrentCard: newCurrentCard, newCardIndex: newCardIndex, currentCard: data.currentCard, newCurrentPlayer: players[newPlayerIndex] })
         });
 
         socket.on('startGame', (data) => {
             const cards = data.cards;
-            io.emit('gameStarted', cards);
+            const players = data.players;
+            console.log('startGame, players', players)
+            console.log('startGame, currentPlayer', players[0])
+            io.emit('gameStarted', { cards: cards, currentCard: cards[0][0], currentPlayer: players[0], players: players });
         });
 
-        socket.on('sendCards', (cards) => {
-            cards = cards;
-            socket.emit('nextCard', getNextCard(cards));
+        socket.on('winner', (currentPlayer) => {
+            io.emit('roundFinished', currentPlayer);
         });
     });
 
     return io;
 }
 
-function getSocket() {
-    if (!io) {
-        throw new Error('Le socket doit être initialisé en appelant initializeSocket d\'abord');
-    }
-    return io;
-}
-
-let nextCardIndex = 0;
-const getNextCard = (cards) => {
-    console.log(cards)
-    const nextCard = cards[0][nextCardIndex];
-    console.log('nextCard', nextCard)
-    nextCardIndex++
-    return nextCard;
-};
-
 
 module.exports = {
     initializeSocket,
-    getSocket,
 };

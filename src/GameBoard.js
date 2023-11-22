@@ -7,27 +7,30 @@ import io from 'socket.io-client';
 
 function GameBoard(props) {
   const [board, setBoard] = useState(new Array(6).fill([]).map(() => []));
+  const [pseudo] = useState(props.pseudo);
+  const [currentPlayer, setCurrentPlayer] = useState(props.currentPlayer);
   const [playerNumber] = useState(props.players.length);
-  const [cards, setCards] = useState(new Array(playerNumber));
-  const [currentCard, setCurrentCard] = useState(['white', '']);
-  const [colors, setColors] = useState(['red', 'yellow', 'blue', 'green']);
+  const [cards] = useState(props.cards);
+  const [currentCard, setCurrentCard] = useState(props.currentCard);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [playerTurn, setPlayerTurn] = useState(0);
-  const [cardsDistributionComplete, setCardsDistributionComplete] = useState(false);
-
+  const [isRoundFinished, setIsRoundFinished] = useState(false);
+  const [roundWinner, setRoundWinner] = useState(undefined);
+ 
   const socket = useRef(null);
 
-
   useEffect(() => {
+    console.log('PLAYERS', props.players)
     socket.current = io('http://localhost:5000');
-    setCurrentCard(props.cards[0][0])
     socket.current.on('newCard', (data) => {
-      console.log('newCard', data)
-      const tempPlateau = [...board]
-      tempPlateau[data.x][data.y] = props.cards[0][0];
-      setBoard(tempPlateau)
-      console.log(board)
+      addNewCard(data)
     });
-  
+
+    socket.current.on('roundFinished', (currentPlayer) => {
+      setIsRoundFinished(true)
+      setRoundWinner(currentPlayer)
+    });
+
 
     return () => {
       if (socket.current) {
@@ -43,7 +46,7 @@ function GameBoard(props) {
    * @returns false si il n'y a pas de gagnant, true sinon
    */
   function checkVictory(x, y) {
-    socket.current.emit('newCardPlaced', {x:x, y:y});
+    socket.current.emit('newCardPlaced', { x: x, y: y, players: props.players, cards: cards, currentPlayer: currentPlayer, currentCard: currentCard, currentCardIndex:currentCardIndex});
     const currentColor = currentCard[0];
     let nbCardsSeries = 4;
     if (playerNumber === 2) {
@@ -132,9 +135,26 @@ function GameBoard(props) {
     return false
   }
 
-  const handlePlayerTurnChange = () => {
+
+  const addNewCard = (data) => {
+    setCurrentPlayer(data.newCurrentPlayer)
+    const tempPlateau = [...board]
+    tempPlateau[data.x][data.y] = data.currentCard;
+    setCurrentCard(data.newCurrentCard)
+    setCurrentCardIndex(data.newCardIndex)
+    setBoard(tempPlateau)
+    console.log(board)
+  };
+
+  const handlePlayerTurnChange = (x, y) => {
+    const victory = checkVictory(x, y)
+    if (victory) {
+      socket.current.emit('winner', currentPlayer)
+    }
     setPlayerTurn(playerTurn + 1);
   };
+
+
 
   /**
    * Permet d'afficher le plateau 
@@ -143,22 +163,19 @@ function GameBoard(props) {
   const BoardDisplay = () => {
     let rows = [];
     for (let i = 0; i < 6; i++) {
-      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} setBoard={setBoard} checkVictory={checkVictory} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} />)
+      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} setBoard={setBoard} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange}pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished}  />)
     }
     return rows;
   }
 
-  /**
-   * Permet d'afficher la carte du joueur qui doit jouer
-   * @returns La carte du joueur qui doit jouer
-   */
-  const CardsDisplay = () => {
-    console.log(cards)
-    const c = cards[0][0]
-    setCurrentCard(c)
-  }
-
   return (
+    <div>
+      {
+        isRoundFinished === true && <h1>Manche terminé <br></br> Le vainqueur est {roundWinner}</h1>
+      }
+      {
+        isRoundFinished === false && (pseudo === currentPlayer ? <h1>C'est à votre tour de jouer</h1> : <h1>C'est au tour de {currentPlayer} de jouer</h1>)
+      }
     <div className="container">
       <div className="board">
         {BoardDisplay()}
@@ -167,6 +184,8 @@ function GameBoard(props) {
         {currentCard[1]}
       </div>
     </div>
+    </div>
+
   );
 }
 

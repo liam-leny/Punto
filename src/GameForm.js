@@ -15,12 +15,13 @@ import { Toast } from 'primereact/toast';
 function GameForm(props) {
   const [tabCreate, setTabCreate] = useState(false);
   const [tabJoin, setTabJoin] = useState(false);
-  const [join, setJoin] = useState(false);
   const [nbRound, setNbRound] = useState(2);
   const [players, setPlayers] = useState(new Array());
   const [id, setId] = useState(undefined);
   const [gameLaunch, setGameLaunch] = useState(false);
   const [cards, setCards] = useState(new Array(players.length));
+  const [currentCard, setCurrentCard] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(null);
 
 
 
@@ -29,14 +30,17 @@ function GameForm(props) {
 
   useEffect(() => {
     socket.current = io('http://localhost:5000');
-    socket.current.on('nouveauJoueur', (pseudo) => {
+    socket.current.on('newPlayer', (pseudo) => {
       console.log(`Nouveau joueur rejoint : ${pseudo}`);
       addNewPlayer(pseudo)
       console.log(players)
     });
 
-    socket.current.on('gameStarted', (cards) => {
-      setCards(cards)
+    socket.current.on('gameStarted', (data) => {
+      setCards(data.cards)
+      setPlayers(data.players)
+      setCurrentCard(data.currentCard)
+      setCurrentPlayer(data.currentPlayer)
       setGameLaunch(true);
     });
 
@@ -60,7 +64,6 @@ function GameForm(props) {
       setId(partieId)
       setTabJoin(false);
       setTabCreate(true);
-      addNewPlayer(props.pseudo)
     } catch (error) {
       console.error('Erreur lors de la création de la partie :', error);
     }
@@ -85,6 +88,7 @@ function GameForm(props) {
         const response = await axios.post(`http://localhost:5000/api/partie/${id}/join`, {
           pseudo: props.pseudo,
         });
+        socket.current.emit('newPlayer', {id:Number(id), pseudo:props.pseudo});
       } catch (error) {
         console.error('Erreur lors de la participation à la partie :', error);
       }
@@ -94,20 +98,22 @@ function GameForm(props) {
   };
 
   const launchGame = () => {
-    addNewPlayer("Test")
+    socket.current.emit('addNewPlayer', props.pseudo);
     console.log('launchGame', id)
     const cards = distributeCards(players.length + 1)
     if (id) {
       console.log(cards)
+      console.log(players)
       console.log(id)
-      socket.current.emit('startGame', {id:id, cards:cards});
+      const tempPlayers = [...players].concat(props.pseudo)
+      socket.current.emit('startGame', {id:id, cards:cards, players:tempPlayers});
     } else {
       console.error('Erreur: id n\'est pas défini');
     }
   };
 
   if (gameLaunch) {
-    return <GameBoard players={players} nbRound={nbRound} partie_id={id} cards={cards} />;
+    return <GameBoard players={players} pseudo={props.pseudo} nbRound={nbRound} partie_id={id} cards={cards} currentCard={currentCard} currentPlayer={currentPlayer} />;
   }
 
   return (
