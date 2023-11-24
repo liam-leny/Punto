@@ -4,31 +4,57 @@ import "./Cards.css"
 import Row from "./Row";
 
 import io from 'socket.io-client';
+import { Toast } from 'primereact/toast';
 
 function GameBoard(props) {
   const [board, setBoard] = useState(new Array(6).fill([]).map(() => []));
   const [pseudo] = useState(props.pseudo);
   const [currentPlayer, setCurrentPlayer] = useState(props.currentPlayer);
   const [playerNumber] = useState(props.players.length);
-  const [cards] = useState(props.cards);
+  const [cards, setCards] = useState(props.cards);
   const [currentCard, setCurrentCard] = useState(props.currentCard);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [playerTurn, setPlayerTurn] = useState(0);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [roundNumber] = useState(props.roundNumber);
   const [isRoundFinished, setIsRoundFinished] = useState(false);
-  const [roundWinner, setRoundWinner] = useState(undefined);
- 
+  const [roundWinners] = useState(new Array());
+  const [isGameFinished, setIsGameFinished] = useState(false);
+
+
+  const toastRef = useRef();
   const socket = useRef(null);
 
   useEffect(() => {
     console.log('PLAYERS', props.players)
     socket.current = io('http://localhost:5000');
+
     socket.current.on('newCard', (data) => {
       addNewCard(data)
     });
 
-    socket.current.on('roundFinished', (currentPlayer) => {
+    socket.current.on('roundFinished', (roundWinner) => {
+      console.log('RoundWinner', roundWinner)
+      roundWinners.push(roundWinner)
       setIsRoundFinished(true)
-      setRoundWinner(currentPlayer)
+      setCurrentRound(prevRound => prevRound + 1);
+      console.log(currentRound)
+      checkEndGame(roundWinner)
+    });
+
+
+    socket.current.on('newRound', (data) => {
+      // Vider le tableau
+      board.forEach((element, index) => {
+        board[index] = [];
+      });
+      setBoard(new Array(6).fill([]).map(() => []))
+      setCurrentPlayer(data.currentPlayer)
+      setCards(data.cards)
+      setCurrentCard(data.currentCard)
+      setCurrentCardIndex(0)
+      setPlayerTurn(0)
+      setIsRoundFinished(false)
     });
 
 
@@ -46,11 +72,11 @@ function GameBoard(props) {
    * @returns false si il n'y a pas de gagnant, true sinon
    */
   function checkVictory(x, y) {
-    socket.current.emit('newCardPlaced', { x: x, y: y, players: props.players, cards: cards, currentPlayer: currentPlayer, currentCard: currentCard, currentCardIndex:currentCardIndex});
+    socket.current.emit('newCardPlaced', { x: x, y: y, players: props.players, cards: cards, currentPlayer: currentPlayer, currentCard: currentCard, currentCardIndex: currentCardIndex });
     const currentColor = currentCard[0];
     let nbCardsSeries = 4;
     if (playerNumber === 2) {
-      nbCardsSeries = 5
+      nbCardsSeries = 2
     }
 
     // Vérifier la ligne
@@ -138,12 +164,12 @@ function GameBoard(props) {
 
   const addNewCard = (data) => {
     setCurrentPlayer(data.newCurrentPlayer)
-    const tempPlateau = [...board]
-    tempPlateau[data.x][data.y] = data.currentCard;
+    const tempBoard = [...board]
+    tempBoard[data.x][data.y] = data.currentCard;
+    setPlayerTurn(playerTurn + 1);
     setCurrentCard(data.newCurrentCard)
     setCurrentCardIndex(data.newCardIndex)
-    setBoard(tempPlateau)
-    console.log(board)
+    setBoard(tempBoard)
   };
 
   const handlePlayerTurnChange = (x, y) => {
@@ -151,8 +177,20 @@ function GameBoard(props) {
     if (victory) {
       socket.current.emit('winner', currentPlayer)
     }
-    setPlayerTurn(playerTurn + 1);
   };
+
+
+  const checkEndGame = (roundWinner) => {
+    // Nombre de partie gagnée par le gagnant de la dernière manche
+    const NbWinGames = roundWinners.filter(winner => winner === roundWinner).length
+    if (NbWinGames === roundNumber) {
+      setIsGameFinished(true)
+    } else {
+      toastRef.current.show({ severity: 'info', summary: `Lancement de la manche ${currentRound + 2}`, detail: 'Dans 5s, la prochaine manche commencera' });
+      socket.current.emit('newRound', { players: props.players, roundWinner: roundWinner })
+    }
+  };
+
 
 
 
@@ -163,27 +201,31 @@ function GameBoard(props) {
   const BoardDisplay = () => {
     let rows = [];
     for (let i = 0; i < 6; i++) {
-      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} setBoard={setBoard} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange}pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished}  />)
+      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished} />)
     }
     return rows;
   }
 
   return (
     <div>
+      <Toast ref={toastRef} />
       {
-        isRoundFinished === true && <h1>Manche terminé <br></br> Le vainqueur est {roundWinner}</h1>
+        isGameFinished === true && <h1>Partie terminé <br></br> {roundWinners[currentRound - 1]} a gagné la partie</h1>
+      }
+      {
+        (isGameFinished === false && isRoundFinished === true) && <h1>Manche terminé <br></br> Le vainqueur de la manche est {roundWinners[currentRound - 1]}</h1>
       }
       {
         isRoundFinished === false && (pseudo === currentPlayer ? <h1>C'est à votre tour de jouer</h1> : <h1>C'est au tour de {currentPlayer} de jouer</h1>)
       }
-    <div className="container">
-      <div className="board">
-        {BoardDisplay()}
+      <div className="container">
+        <div className="board">
+          {BoardDisplay()}
+        </div>
+        <div className={`square number-cards ${currentCard[0]}`}>
+          {currentCard[1]}
+        </div>
       </div>
-      <div className={`square number-cards ${currentCard[0]}`}>
-        {currentCard[1]}
-      </div>
-    </div>
     </div>
 
   );

@@ -22,7 +22,11 @@ function Square(props) {
       console.log('x : ', x, 'y : ', y)
       console.log('board', board[x][y])
       if (props.playerTurn === 0) {
-        validCard()
+        if ((x === 2 && y === 2) || (x === 2 && y === 3) || (x === 3 && y === 2) || (x === 3 && y === 3)) {
+          validCard()
+        } else {
+          toastRef.current.show({ severity: 'error', summary: 'Premier coup non valide', detail: 'La première carte de la manche doit être placée au milieu du plateau' });
+        }
       } else {
         // Vérifier si la carte est bien superposée à une carte de valeur inférieur
         if (board[x][y] !== undefined) {

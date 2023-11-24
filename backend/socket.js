@@ -1,4 +1,6 @@
 const socketIO = require('socket.io');
+const distributeCards = require('../src/gameUtils');
+
 
 
 function initializeSocket(server) {
@@ -48,9 +50,32 @@ function initializeSocket(server) {
         socket.on('startGame', (data) => {
             const cards = data.cards;
             const players = data.players;
+            const indexFirstPlayer = Math.floor(Math.random() * players.length); // Entier compris [0, players.length]
             console.log('startGame, players', players)
-            console.log('startGame, currentPlayer', players[0])
-            io.emit('gameStarted', { cards: cards, currentCard: cards[0][0], currentPlayer: players[0], players: players });
+            io.emit('gameStarted', { cards: cards, currentCard: cards[indexFirstPlayer][0], currentPlayer: players[indexFirstPlayer], players: players });
+        });
+
+        socket.on('newRound', async (data) => {
+            const players = data.players;
+            const roundWinner = data.roundWinner;
+            const cards = distributeCards(players.length + 1)
+            let indexFirstPlayer = Math.floor(Math.random() * players.length); // Entier compris [0, players.length]
+            const indexRoundWinner = players.indexOf(roundWinner)
+            // Le joueur qui commence la nouvelle manche ne peut pas être le vainqueur de la précédente 
+            if (indexFirstPlayer === indexRoundWinner) {
+                if(indexFirstPlayer === players.length) {
+                    indexFirstPlayer++
+                } else {
+                    indexFirstPlayer = 0
+                }
+            }
+            console.log('players', players)
+            console.log('roundWinner', roundWinner)
+            console.log('newRound, currentPlayer', players[0])
+            console.log('newRound, indexFirstPlayer', indexFirstPlayer)
+            console.log('newRound, cards', cards[indexFirstPlayer])
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            io.emit('newRound', { cards: cards, currentCard: cards[indexFirstPlayer][0], currentPlayer: players[indexFirstPlayer]});            
         });
 
         socket.on('winner', (currentPlayer) => {
@@ -60,7 +85,6 @@ function initializeSocket(server) {
 
     return io;
 }
-
 
 module.exports = {
     initializeSocket,

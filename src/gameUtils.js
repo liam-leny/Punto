@@ -68,4 +68,4 @@ const distributeCards = (playerNumber) => {
     return playersCards;
 };
 
-export default distributeCards;
+module.exports = distributeCards;

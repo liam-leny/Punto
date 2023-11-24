@@ -15,7 +15,7 @@ import { Toast } from 'primereact/toast';
 function GameForm(props) {
   const [tabCreate, setTabCreate] = useState(false);
   const [tabJoin, setTabJoin] = useState(false);
-  const [nbRound, setNbRound] = useState(2);
+  const [roundNumber, setRoundNumber] = useState(2);
   const [players, setPlayers] = useState(new Array());
   const [id, setId] = useState(undefined);
   const [gameLaunch, setGameLaunch] = useState(false);
@@ -56,7 +56,7 @@ function GameForm(props) {
     try {
       const response = await axios.post('http://localhost:5000/api/partie', {
         pseudo: props.pseudo,
-        nombre_de_manches: nbRound,
+        nombre_de_manches: roundNumber,
         duree: null,
       });
       const partieId = response.data.partie_id;
@@ -88,7 +88,7 @@ function GameForm(props) {
         const response = await axios.post(`http://localhost:5000/api/partie/${id}/join`, {
           pseudo: props.pseudo,
         });
-        socket.current.emit('newPlayer', {id:Number(id), pseudo:props.pseudo});
+        socket.current.emit('newPlayer', { id: Number(id), pseudo: props.pseudo });
       } catch (error) {
         console.error('Erreur lors de la participation à la partie :', error);
       }
@@ -98,22 +98,27 @@ function GameForm(props) {
   };
 
   const launchGame = () => {
-    socket.current.emit('addNewPlayer', props.pseudo);
-    console.log('launchGame', id)
-    const cards = distributeCards(players.length + 1)
-    if (id) {
-      console.log(cards)
-      console.log(players)
-      console.log(id)
-      const tempPlayers = [...players].concat(props.pseudo)
-      socket.current.emit('startGame', {id:id, cards:cards, players:tempPlayers});
+    // Erreur si l'hôte tente de lancer une partie à 1 joueur
+    console.log(players)
+    if (players.length === 0) {
+      toastRef.current.show({ severity: 'info', summary: 'Partie impossible', detail: 'Le jeu ne possède pas de version solo' });
     } else {
-      console.error('Erreur: id n\'est pas défini');
+      console.log('launchGame', id)
+      const cards = distributeCards(players.length + 1)
+      if (id) {
+        console.log(cards)
+        console.log(players)
+        console.log(id)
+        const tempPlayers = [...players].concat(props.pseudo)
+        socket.current.emit('startGame', { id: id, cards: cards, players: tempPlayers });
+      } else {
+        console.error('Erreur: id n\'est pas défini');
+      }
     }
   };
 
   if (gameLaunch) {
-    return <GameBoard players={players} pseudo={props.pseudo} nbRound={nbRound} partie_id={id} cards={cards} currentCard={currentCard} currentPlayer={currentPlayer} />;
+    return <GameBoard players={players} pseudo={props.pseudo} roundNumber={roundNumber} partie_id={id} cards={cards} currentCard={currentCard} currentPlayer={currentPlayer} />;
   }
 
   return (
@@ -135,7 +140,7 @@ function GameForm(props) {
         {tabCreate &&
           <div>
             <h3>Choisissez le nombre de manche de la partie </h3>
-            <InputNumber value={nbRound} onValueChange={(e) => setNbRound(e.value)} mode="decimal" showButtons min={2} max={10} />
+            <InputNumber value={roundNumber} onValueChange={(e) => setRoundNumber(e.value)} mode="decimal" showButtons min={2} max={10} />
             <h3>Partagez ce code avec vos amis :  </h3>
             <h1>{id}</h1>
             <h3>Liste des joueurs présents dans cette partie : {players.join(', ')} </h3>

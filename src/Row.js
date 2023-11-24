@@ -8,7 +8,7 @@ function Row(props) {
   const squareCreation = () => {
     let squares = [];
     for (let squareNum = 0; squareNum < props.size; squareNum++) {
-      squares.push(<Square key={squareNum} i={props.i} j={squareNum} currentCard={props.currentCard}  board={props.board} setBoard={props.setBoard} playerTurn={props.playerTurn} handlePlayerTurnChange={props.handlePlayerTurnChange} pseudo={props.pseudo} currentPlayer={props.currentPlayer} isRoundFinished={props.isRoundFinished} />)
+      squares.push(<Square key={squareNum} i={props.i} j={squareNum} currentCard={props.currentCard} board={props.board} playerTurn={props.playerTurn} handlePlayerTurnChange={props.handlePlayerTurnChange} pseudo={props.pseudo} currentPlayer={props.currentPlayer} isRoundFinished={props.isRoundFinished} />)
     }
     return squares;
   }
