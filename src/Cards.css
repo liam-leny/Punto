@@ -1,20 +1,20 @@
 .yellow {
-    background-color: yellow;
+    background-color: #FFD54F;
     color: black
 }
 
 .blue{
-    background-color: blue;
+    background-color: rgb(84, 125, 158);
     color: white
 }
 
 .green {
-    background-color: green;
+    background-color: rgb(35, 139, 35);
     color: white
 }
 
 .red{
-    background-color: red;
+    background-color: rgb(211, 45, 45);
     color: white
 }
 

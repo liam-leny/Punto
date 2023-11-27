@@ -20,7 +20,6 @@ function Square(props) {
       const y = props.j;
       const board = props.board;
       console.log('x : ', x, 'y : ', y)
-      console.log('board', board[x][y])
       if (props.playerTurn === 0) {
         if ((x === 2 && y === 2) || (x === 2 && y === 3) || (x === 3 && y === 2) || (x === 3 && y === 3)) {
           validCard()
@@ -34,7 +33,7 @@ function Square(props) {
           if (props.currentCard[1] > cardOnBoard[1]) {
             validCard()
           } else {
-            toastRef.current.show({ severity: 'error', summary: 'Superposition impossible', detail: 'Votre carte doit avoir une valeur supérieur à celle déjà présente sur le board' });
+            toastRef.current.show({ severity: 'error', summary: 'Superposition impossible', detail: 'Votre carte doit avoir une valeur supérieur à celle déjà présente sur le plateau' });
           }
         }
         // Vérifier si la carte est bien juxtaposée à une autre carte

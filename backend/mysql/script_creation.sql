@@ -1,26 +1,48 @@
 CREATE DATABASE punto;
 USE punto;
 
-CREATE TABLE Partie (
+-- Désactive les contraintes de clé étrangère
+SET foreign_key_checks = 0;
+
+CREATE TABLE IF NOT EXISTS Game (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    date_creation DATE,
-    nombre_de_manches INT,
-    duree TIME
+    creation_date DATETIME NOT NULL,
+    round_number INT NOT NULL,
+    winner INT,
+    end_date DATETIME,
+    FOREIGN KEY (winner) REFERENCES Player(id)
 );
 
-CREATE TABLE Joueur (
+CREATE TABLE IF NOT EXISTS Round (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    creation_date DATETIME NOT NULL,
+    current_round_number INT NOT NULL,
+    game_id INT NOT NULL,
+    winner INT,
+    end_date DATETIME,
+    FOREIGN KEY (winner) REFERENCES Player(id),
+    FOREIGN KEY (game_id) REFERENCES Game(id)
+);
+
+CREATE TABLE IF NOT EXISTS Player (
     id INT AUTO_INCREMENT PRIMARY KEY,
     pseudo VARCHAR(255),
-    partie_id INT,
-    FOREIGN KEY (partie_id) REFERENCES Partie(id)
+    game_id INT,
+    FOREIGN KEY (game_id) REFERENCES Game(id)
 );
 
-CREATE TABLE Carte (
+CREATE TABLE IF NOT EXISTS CardMove (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre_de_points INT,
-    couleur VARCHAR(255),
-    position_x INT,
-    position_y INT,
-    joueur_id INT,
-    FOREIGN KEY (joueur_id) REFERENCES Joueur(id)
+    moment DATETIME NOT NULL,
+    point_number INT NOT NULL CHECK (point_number BETWEEN 0 AND 9),
+    color VARCHAR(255) NOT NULL CHECK (color IN ('green', 'yellow', 'red', 'blue')),
+    coord_x INT NOT NULL CHECK (coord_x BETWEEN 0 AND 5),
+    coord_y INT NOT NULL CHECK (coord_y BETWEEN 0 AND 5),
+    round_id INT NOT NULL,
+    player_id INT NOT NULL,
+    FOREIGN KEY (player_id) REFERENCES Player(id),
+    FOREIGN KEY (round_id) REFERENCES Round(id)
 );
+
+-- Réactive les contraintes de clé étrangère
+SET foreign_key_checks = 1;

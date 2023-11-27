@@ -1,8 +1,6 @@
 const socketIO = require('socket.io');
 const distributeCards = require('../src/gameUtils');
 
-
-
 function initializeSocket(server) {
     io = socketIO(server, {
         cors: {
@@ -20,7 +18,7 @@ function initializeSocket(server) {
         });
 
         socket.on('newPlayer', (data) => {
-            io.to(data.id).emit('newPlayer', data.pseudo);
+            io.to(data.id).emit('newPlayer', { pseudo: data.pseudo, playerId: data.playerId });
         });
 
         socket.on('newCardPlaced', (data) => {
@@ -28,8 +26,6 @@ function initializeSocket(server) {
             const cards = data.cards;
             const currentPlayer = data.currentPlayer;
             const currentPlayerIndex = players.indexOf(currentPlayer)
-            console.log('playerIndex', currentPlayerIndex)
-            console.log('currentCard', data.currentCard)
             const currentCardIndex = data.currentCardIndex;
             let newPlayerIndex = currentPlayerIndex + 1
             let newCardIndex = currentCardIndex;
@@ -38,13 +34,8 @@ function initializeSocket(server) {
                 newPlayerIndex = 0;
                 newCardIndex = currentCardIndex + 1;
             }
-            console.log('currentCardIndex', currentCardIndex)
-            console.log('newPlayerIndex', newPlayerIndex)
-
             const newCurrentCard = cards[newPlayerIndex][newCardIndex];
-            console.log(newCurrentCard)
-
-            io.emit('newCard', { x: data.x, y: data.y, newCurrentCard: newCurrentCard, newCardIndex: newCardIndex, currentCard: data.currentCard, newCurrentPlayer: players[newPlayerIndex] })
+            io.emit('newCard', { x: data.x, y: data.y, newCurrentCard: newCurrentCard, newCardIndex: newCardIndex, currentCard: data.currentCard, newCurrentPlayer: players[newPlayerIndex], newPlayerIndex: newPlayerIndex })
         });
 
         socket.on('startGame', (data) => {
@@ -52,18 +43,18 @@ function initializeSocket(server) {
             const players = data.players;
             const indexFirstPlayer = Math.floor(Math.random() * players.length); // Entier compris [0, players.length]
             console.log('startGame, players', players)
-            io.emit('gameStarted', { cards: cards, currentCard: cards[indexFirstPlayer][0], currentPlayer: players[indexFirstPlayer], players: players });
+            io.emit('gameStarted', { cards: cards, currentCard: cards[indexFirstPlayer][0], currentPlayer: players[indexFirstPlayer], players: players, playersId: data.playersId, roundId: data.roundId });
         });
 
         socket.on('newRound', async (data) => {
             const players = data.players;
             const roundWinner = data.roundWinner;
-            const cards = distributeCards(players.length + 1)
+            const cards = distributeCards(players.length)
             let indexFirstPlayer = Math.floor(Math.random() * players.length); // Entier compris [0, players.length]
             const indexRoundWinner = players.indexOf(roundWinner)
             // Le joueur qui commence la nouvelle manche ne peut pas être le vainqueur de la précédente 
             if (indexFirstPlayer === indexRoundWinner) {
-                if(indexFirstPlayer === players.length) {
+                if (indexFirstPlayer === players.length) {
                     indexFirstPlayer++
                 } else {
                     indexFirstPlayer = 0
@@ -73,9 +64,9 @@ function initializeSocket(server) {
             console.log('roundWinner', roundWinner)
             console.log('newRound, currentPlayer', players[0])
             console.log('newRound, indexFirstPlayer', indexFirstPlayer)
-            console.log('newRound, cards', cards[indexFirstPlayer])
+            console.log('newRound, cards', cards)
             await new Promise(resolve => setTimeout(resolve, 5000));
-            io.emit('newRound', { cards: cards, currentCard: cards[indexFirstPlayer][0], currentPlayer: players[indexFirstPlayer]});            
+            io.emit('newRound', { cards: cards, currentCard: cards[indexFirstPlayer][0], currentPlayer: players[indexFirstPlayer], roundId: data.roundId });
         });
 
         socket.on('winner', (currentPlayer) => {

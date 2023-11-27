@@ -3,6 +3,7 @@ import "./GameBoard.css"
 import "./Cards.css"
 import Row from "./Row";
 
+import axios from 'axios';
 import io from 'socket.io-client';
 import { Toast } from 'primereact/toast';
 
@@ -10,13 +11,15 @@ function GameBoard(props) {
   const [board, setBoard] = useState(new Array(6).fill([]).map(() => []));
   const [pseudo] = useState(props.pseudo);
   const [currentPlayer, setCurrentPlayer] = useState(props.currentPlayer);
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [playerNumber] = useState(props.players.length);
+  const [playerTurn, setPlayerTurn] = useState(0);
   const [cards, setCards] = useState(props.cards);
   const [currentCard, setCurrentCard] = useState(props.currentCard);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [playerTurn, setPlayerTurn] = useState(0);
   const [currentRound, setCurrentRound] = useState(0);
   const [roundNumber] = useState(props.roundNumber);
+  const [roundId, setRoundId] = useState(props.roundId);
   const [isRoundFinished, setIsRoundFinished] = useState(false);
   const [roundWinners] = useState(new Array());
   const [isGameFinished, setIsGameFinished] = useState(false);
@@ -26,7 +29,6 @@ function GameBoard(props) {
   const socket = useRef(null);
 
   useEffect(() => {
-    console.log('PLAYERS', props.players)
     socket.current = io('http://localhost:5000');
 
     socket.current.on('newCard', (data) => {
@@ -38,12 +40,11 @@ function GameBoard(props) {
       roundWinners.push(roundWinner)
       setIsRoundFinished(true)
       setCurrentRound(prevRound => prevRound + 1);
-      console.log(currentRound)
       checkEndGame(roundWinner)
     });
 
 
-    socket.current.on('newRound', (data) => {
+    socket.current.on('newRound', async (data) => {
       // Vider le tableau
       board.forEach((element, index) => {
         board[index] = [];
@@ -55,6 +56,7 @@ function GameBoard(props) {
       setCurrentCardIndex(0)
       setPlayerTurn(0)
       setIsRoundFinished(false)
+      setRoundId(data.roundId)
     });
 
 
@@ -71,8 +73,16 @@ function GameBoard(props) {
    * @param {*} y Coordonnée y de la dernière carte posée
    * @returns false si il n'y a pas de gagnant, true sinon
    */
-  function checkVictory(x, y) {
+  async function checkVictory(x, y) {
     socket.current.emit('newCardPlaced', { x: x, y: y, players: props.players, cards: cards, currentPlayer: currentPlayer, currentCard: currentCard, currentCardIndex: currentCardIndex });
+    await axios.post('http://localhost:5000/api/cardmove', {
+      point_number: currentCard[1],
+      color: currentCard[0],
+      coord_x: x,
+      coord_y: y,
+      round_id: roundId,
+      player_id: props.playersId[currentPlayerIndex],
+    });
     const currentColor = currentCard[0];
     let nbCardsSeries = 4;
     if (playerNumber === 2) {
@@ -167,68 +177,86 @@ function GameBoard(props) {
     const tempBoard = [...board]
     tempBoard[data.x][data.y] = data.currentCard;
     setPlayerTurn(playerTurn + 1);
+    setCurrentPlayerIndex(data.newPlayerIndex)
     setCurrentCard(data.newCurrentCard)
     setCurrentCardIndex(data.newCardIndex)
     setBoard(tempBoard)
   };
 
-  const handlePlayerTurnChange = (x, y) => {
-    const victory = checkVictory(x, y)
+  const handlePlayerTurnChange = async (x, y) => {
+    const victory = await checkVictory(x, y)
     if (victory) {
+      await axios.patch(`http://localhost:5000/api/round/${roundId}/`, {
+        winner: props.playersId[currentPlayerIndex],
+      });
       socket.current.emit('winner', currentPlayer)
     }
   };
 
 
-  const checkEndGame = (roundWinner) => {
+  const checkEndGame = async (roundWinner) => {
     // Nombre de partie gagnée par le gagnant de la dernière manche
     const NbWinGames = roundWinners.filter(winner => winner === roundWinner).length
     if (NbWinGames === roundNumber) {
+      const indexGameWinner = props.players.indexOf(roundWinner)
+      const winner = props.playersId[indexGameWinner]
+      if (pseudo === currentPlayer) {
+        await axios.patch(`http://localhost:5000/api/game/${props.gameId}/`, {
+          winner: winner,
+        });
+      }
       setIsGameFinished(true)
     } else {
-      toastRef.current.show({ severity: 'info', summary: `Lancement de la manche ${currentRound + 2}`, detail: 'Dans 5s, la prochaine manche commencera' });
-      socket.current.emit('newRound', { players: props.players, roundWinner: roundWinner })
+      if (pseudo === currentPlayer) {
+        toastRef.current.show({ severity: 'info', summary: `Lancement de la manche ${currentRound + 2}`, detail: 'Dans 5s, la prochaine manche commencera' });
+        const response = await axios.post(`http://localhost:5000/api/round/`, {
+          current_round_number: currentRound,
+          game_id: props.gameId
+        });
+        const roundId = response.data.round_id;
+        socket.current.emit('newRound', { players: props.players, roundWinner: roundWinner, currentRound: currentRound, gameId: props.gameId, roundId: roundId })
+      }
     }
-  };
+};
 
 
 
 
-  /**
-   * Permet d'afficher le plateau 
-   * @returns Un tableau contenant toutes les lignes du plateau
-   */
-  const BoardDisplay = () => {
-    let rows = [];
-    for (let i = 0; i < 6; i++) {
-      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished} />)
-    }
-    return rows;
+/**
+ * Permet d'afficher le plateau 
+ * @returns Un tableau contenant toutes les lignes du plateau
+ */
+const BoardDisplay = () => {
+  let rows = [];
+  for (let i = 0; i < 6; i++) {
+    rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished} />)
   }
+  return rows;
+}
 
-  return (
-    <div>
-      <Toast ref={toastRef} />
-      {
-        isGameFinished === true && <h1>Partie terminé <br></br> {roundWinners[currentRound - 1]} a gagné la partie</h1>
-      }
-      {
-        (isGameFinished === false && isRoundFinished === true) && <h1>Manche terminé <br></br> Le vainqueur de la manche est {roundWinners[currentRound - 1]}</h1>
-      }
-      {
-        isRoundFinished === false && (pseudo === currentPlayer ? <h1>C'est à votre tour de jouer</h1> : <h1>C'est au tour de {currentPlayer} de jouer</h1>)
-      }
-      <div className="container">
-        <div className="board">
-          {BoardDisplay()}
-        </div>
-        <div className={`square number-cards ${currentCard[0]}`}>
-          {currentCard[1]}
-        </div>
+return (
+  <div>
+    <Toast ref={toastRef} />
+    {
+      isGameFinished === true && <h1>Partie terminé <br></br> {roundWinners[currentRound - 1]} a gagné la partie</h1>
+    }
+    {
+      (isGameFinished === false && isRoundFinished === true) && <h1>Manche terminé <br></br> Le vainqueur de la manche est {roundWinners[currentRound - 1]}</h1>
+    }
+    {
+      isRoundFinished === false && (pseudo === currentPlayer ? <h1>C'est à votre tour de jouer</h1> : <h1>C'est au tour de {currentPlayer} de jouer</h1>)
+    }
+    <div className="container">
+      <div className="board">
+        {BoardDisplay()}
+      </div>
+      <div className={`square number-cards ${currentCard[0]}`}>
+        {currentCard[1]}
       </div>
     </div>
+  </div>
 
-  );
+);
 }
 
 export default GameBoard;

@@ -13,60 +13,127 @@ app.use(cors());
 app.use(express.json());
 app.use(cors());
 
-// Route pour récupérer toutes les parties
-app.get('/api/partie', (req, res) => {
-  db.query('SELECT * FROM Partie', (err, results) => {
-    if (err) {
-      console.error('Erreur lors de la récupération des données :', err);
-      res.status(500).json({ error: 'Erreur lors de la récupération des données' });
-      return;
-    }
-    res.json(results);
-  });
-});
-
 // Route pour créer une nouvelle partie
-app.post('/api/partie', (req, res) => {
-  const date_creation = new Date();
-  const nombre_de_manches = req.body.nombre_de_manches;
-  const duree = null;
+app.post('/api/game', (req, res) => {
+  const creation_date = new Date();
+  const round_number = req.body.round_number;
 
   // Insérer une nouvelle partie
-  db.query('INSERT INTO Partie (date_creation, nombre_de_manches, duree) VALUES (?, ?, ?)', [date_creation, nombre_de_manches, duree], (err, result) => {
+  db.query('INSERT INTO Game (creation_date, round_number) VALUES (?, ?)', [creation_date, round_number], (err, result) => {
     if (err) {
       console.error('Erreur lors de la création de la partie :', err);
       res.status(500).json({ error: 'Erreur lors de la création de la partie' });
       return;
     }
 
-    const partie_id = result.insertId;
+    const game_id = result.insertId;
 
-    // Insérer le joueur créateur dans la table Joueur avec l'id de la partie
-    db.query('INSERT INTO Joueur (pseudo, partie_id) VALUES (?, ?)', [req.body.pseudo, partie_id], (err, result) => {
+    // Insérer le joueur créateur dans la table Player avec l'id de la partie
+    db.query('INSERT INTO Player (pseudo, game_id) VALUES (?, ?)', [req.body.pseudo, game_id], (err, result) => {
       if (err) {
         console.error('Erreur lors de l\'inscription du joueur à la partie :', err);
         res.status(500).json({ error: 'Erreur lors de l\'inscription du joueur à la partie' });
         return;
       }
 
-      res.json({ partie_id });
+      const player_id = result.insertId;
+
+      res.json({ game_id, player_id });
     });
   });
 });
 
 // Route pour rejoindre une partie
-app.post('/api/partie/:id/join', (req, res) => {
-  const partie_id = Number(req.params.id);
+app.post('/api/game/:id/join', (req, res) => {
+  const game_id = Number(req.params.id);
   const pseudo = req.body.pseudo;
 
-  // Insérer le joueur dans la table Joueur avec l'id de la partie
-  db.query('INSERT INTO Joueur (pseudo, partie_id) VALUES (?, ?)', [pseudo, partie_id], (err, result) => {
+  // Insérer le joueur dans la table Player avec l'id de la partie
+  db.query('INSERT INTO Player (pseudo, game_id) VALUES (?, ?)', [pseudo, game_id], (err, result) => {
     if (err) {
       console.error('Erreur lors de l\'inscription du joueur à la partie :', err);
       res.status(500).json({ error: 'Erreur lors de l\'inscription du joueur à la partie' });
       return;
     }
 
+    const player_id = result.insertId;
+
+    res.json({ player_id });
+  });
+});
+
+// Route pour mettre à jour une partie
+app.patch('/api/game/:id', (req, res) => {
+  const id = req.params.id;
+  const winner = req.body.winner;
+  const end_date = new Date();
+
+  // Mettre à jour la manche avec le vainqueur et le moment de fin
+  db.query('UPDATE Game SET winner = ?, end_date = ? WHERE id = ?', [winner, end_date, id], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la mise à jour de la partie :', err);
+      res.status(500).json({ error: 'Erreur lors de la mise à jour de la partie' });
+      return;
+    }
+    res.json({ success: true });
+  });
+});
+
+// Route pour créer une nouvelle manche
+app.post('/api/round', (req, res) => {
+  const creation_date = new Date();
+  const current_round_number = req.body.current_round_number;
+  const game_id = req.body.game_id;
+
+  // Insérer une nouvelle manche
+  db.query('INSERT INTO Round (creation_date, current_round_number, game_id) VALUES (?, ?, ?)', [creation_date, current_round_number, game_id], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la création de la manche :', err);
+      res.status(500).json({ error: 'Erreur lors de la création de la manche' });
+      return;
+    }
+
+    const round_id = result.insertId;
+    res.json({ round_id });
+
+  });
+});
+
+// Route pour mettre à jour une manche
+app.patch('/api/round/:id', (req, res) => {
+  const id = req.params.id;
+  const winner = req.body.winner;
+  const end_date = new Date();
+
+  // Mettre à jour la manche avec le vainqueur et le moment de fin
+  db.query('UPDATE Round SET winner = ?, end_date = ? WHERE id = ?', [winner, end_date, id], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la mise à jour de la manche :', err);
+      res.status(500).json({ error: 'Erreur lors de la mise à jour de la manche' });
+      return;
+    }
+
+    res.json({ success: true });
+  });
+});
+
+
+// Route pour créer une nouveau coup
+app.post('/api/cardmove', (req, res) => {
+  const moment = new Date();
+  const point_number = req.body.point_number;
+  const color = req.body.color;
+  const coord_x = req.body.coord_x;
+  const coord_y = req.body.coord_y;
+  const round_id = req.body.round_id;
+  const player_id = req.body.player_id;
+  // Insérer une nouvelle manche
+  db.query('INSERT INTO CardMove (moment, point_number, color, coord_x, coord_y, round_id, player_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [moment, point_number, color, coord_x, coord_y, round_id, player_id], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la création du coup :', err);
+      res.status(500).json({ error: 'Erreur lors de la création du coup' });
+      return;
+    }
     res.json({ success: true });
   });
 });
