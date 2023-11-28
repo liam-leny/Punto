@@ -2,16 +2,33 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { initializeSocket } = require('./socket');
-const db = require('./mysql/mysql');
+const dbMySQL = require('./mysql/mysql');
+const {query} = require('./sqlite/sqlite');
 
 const app = express();
 const server = http.createServer(app);
 const io = initializeSocket(server);
 
+let db;
+
 app.use(express.json());
 app.use(cors());
-app.use(express.json());
-app.use(cors());
+
+app.post('/api/database-choice', (req, res) => {
+  console.log(req.body)
+  const database = req.body.database;
+
+  if (database === 'mysql') {
+    db = dbMySQL;
+  } else if (database === 'sqlite') {
+    db = {query};
+  }
+  res.json({ success: true });
+
+});
+
+
+
 
 // Route pour créer une nouvelle partie
 app.post('/api/game', (req, res) => {
