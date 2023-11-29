@@ -12,7 +12,7 @@ import { Toast } from 'primereact/toast';
 function PlayerForm(props) {
   const [pseudo, setPseudo] = useState('');
   const [database, setDatabase] = useState('');
-  const [availableDatabases] = useState(['mysql', 'sqlite', 'mongo']);
+  const [availableDatabases] = useState(['MySQL', 'SQLite', 'MongoDB']);
   const [playerRegistered, setPlayerRegistered] = useState(false);
   const toastRef = useRef();
 
@@ -30,7 +30,7 @@ function PlayerForm(props) {
   };
 
   if (playerRegistered) {
-    return <GameForm pseudo={pseudo} />;
+    return <GameForm pseudo={pseudo} database={database} />;
   }
 
   return (

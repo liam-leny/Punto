@@ -3,7 +3,10 @@ const cors = require('cors');
 const http = require('http');
 const { initializeSocket } = require('./socket');
 const dbMySQL = require('./mysql/mysql');
-const {query} = require('./sqlite/sqlite');
+const { query } = require('./sqlite/sqlite');
+const { dbMongo } = require('./mongo/mongo');
+const { Game } = require('./mongo/script_creation');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -18,10 +21,12 @@ app.post('/api/database-choice', (req, res) => {
   console.log(req.body)
   const database = req.body.database;
 
-  if (database === 'mysql') {
+  if (database === 'MySQL') {
     db = dbMySQL;
-  } else if (database === 'sqlite') {
-    db = {query};
+  } else if (database === 'SQLite') {
+    db = { query };
+  } else if (database === 'MongoDB') {
+    db = dbMongo
   }
   res.json({ success: true });
 
@@ -156,6 +161,59 @@ app.post('/api/cardmove', (req, res) => {
 });
 
 
+// Route pour créer une nouvelle partie
+app.post('/api/mongo/game', async (req, res) => {
+  try {
+    const creation_date = new Date()
+    const round_number = req.body.round_number;
+
+    // Créer un nouvel objet Game avec les données reçues
+    const newGame = new Game({
+      creation_date,
+      round_number,
+    });
+
+    // Enregistrer la nouvelle partie dans la base de données
+    const savedGame = await newGame.save();
+    console.log(savedGame)
+    res.json(savedGame._id); // Renvoyer la partie créée en réponse
+  } catch (error) {
+    console.error('Erreur lors de la création de la partie :', error);
+    res.status(500).json({ error: 'Erreur lors de la création de la partie' });
+  }
+});
+
+// Route pour insérer des mouvement de carte à une partie
+app.patch('/api/mongo/cardmove/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const moment = new Date()
+    const pseudo = req.body.pseudo;
+    const point_number = req.body.point_number;
+    const color = req.body.color;
+    const coord_x = req.body.coord_x;
+    const coord_y = req.body.coord_y;
+
+    // Créer un nouvel objet CardMove avec les données reçues
+    const newCardMove = {
+      moment,
+      pseudo,
+      point_number: point_number,
+      color,
+      coord_x: coord_x,
+      coord_y: coord_y,
+    };
+
+    const game = await Game.findById(id);
+    game.card_moves.push(newCardMove);
+    const updatedGame = await game.save();
+
+    res.json(updatedGame);
+  } catch (error) {
+    console.error('Erreur lors de l\'insertion du mouvement de carte :', error);
+    res.status(500).json({ error: 'Erreur lors de l\'insertion du mouvement de carte' });
+  }
+});
 
 // Démarrer le serveur Express
 const port = 5000;

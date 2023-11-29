@@ -24,6 +24,7 @@ function GameForm(props) {
   const [cards, setCards] = useState(new Array(players.length));
   const [currentCard, setCurrentCard] = useState(null);
   const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [dbType] = useState(props.database === 'MongoDB' ? 'NoSQL' : 'Relationnel');
 
 
 
@@ -45,6 +46,7 @@ function GameForm(props) {
       setCurrentPlayer(data.currentPlayer)
       setPlayersId(data.playersId)
       setRoundId(data.roundId)
+      setRoundNumber(data.roundNumber)
       setGameLaunch(true);
     });
 
@@ -57,21 +59,30 @@ function GameForm(props) {
 
 
   const tabCreateGame = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/game', {
-        pseudo: props.pseudo,
+    let gameId;
+    if (dbType === 'Relationnel') {
+      try {
+        const response = await axios.post('http://localhost:5000/api/game', {
+          pseudo: props.pseudo,
+          round_number: roundNumber,
+        });
+        gameId = response.data.game_id;
+        const playerId = response.data.player_id;
+        addNewPlayer(playerId, props.pseudo)
+      } catch (error) {
+        console.error('Erreur lors de la création de la partie :', error);
+      }
+    } else {
+      const response = await axios.post('http://localhost:5000/api/mongo/game', {
         round_number: roundNumber,
       });
-      const gameId = response.data.game_id;
-      const playerId = response.data.player_id;
-      addNewPlayer(playerId, props.pseudo)
-      socket.current.emit('joinRoom', gameId);
-      setId(gameId)
-      setTabJoin(false);
-      setTabCreate(true);
-    } catch (error) {
-      console.error('Erreur lors de la création de la partie :', error);
+      gameId = response.data;
+      addNewPlayer(undefined, props.pseudo)
     }
+    socket.current.emit('joinRoom', gameId);
+    setId(gameId)
+    setTabJoin(false);
+    setTabCreate(true);
   };
 
 
@@ -90,15 +101,20 @@ function GameForm(props) {
   const joinGame = async () => {
     if (id) {
       // toastRef.current.show({ severity: 'info', summary: 'Recherche', detail: `Vérification de l'existence de la partie` });
-      try {
-        socket.current.emit('joinRoom', Number(id));
-        const response = await axios.post(`http://localhost:5000/api/game/${id}/join`, {
-          pseudo: props.pseudo,
-        });
-        const playerId = response.data.player_id;
-        socket.current.emit('newPlayer', { id: Number(id), pseudo: props.pseudo, playerId: playerId });
-      } catch (error) {
-        console.error('Erreur lors de la participation à la partie :', error);
+      if (dbType === 'Relationnel') {
+        try {
+          socket.current.emit('joinRoom', Number(id));
+          const response = await axios.post(`http://localhost:5000/api/game/${id}/join`, {
+            pseudo: props.pseudo,
+          });
+          const playerId = response.data.player_id;
+          socket.current.emit('newPlayer', { id: Number(id), pseudo: props.pseudo, playerId: playerId });
+        } catch (error) {
+          console.error('Erreur lors de la participation à la partie :', error);
+        }
+      } else {
+        socket.current.emit('joinRoom', id);
+        socket.current.emit('newPlayer', { id: id, pseudo: props.pseudo, playerId: undefined });
       }
     } else {
       toastRef.current.show({ severity: 'error', summary: 'Erreur', detail: 'Merci de saisir un code de partie' });
@@ -113,16 +129,17 @@ function GameForm(props) {
       console.log('launchGame', id)
       const cards = distributeCards(players.length)
       if (id) {
+        if (dbType === 'Relationnel') {
         const response = await axios.post(`http://localhost:5000/api/round/`, {
           current_round_number: 0,
-          game_id : id   
+          game_id: id
         });
         const roundId = response.data.round_id;
         console.log(cards)
         console.log(players)
         console.log(id)
-        // const tempPlayers = [...players].concat(props.pseudo)
-        socket.current.emit('startGame', { id: id, cards: cards, players: players, playersId: playersId, roundId: roundId });
+      }
+        socket.current.emit('startGame', { id: id, cards: cards, players: players, playersId: playersId, roundId: roundId, roundNumber: roundNumber });
       } else {
         console.error('Erreur: id n\'est pas défini');
       }
@@ -130,7 +147,7 @@ function GameForm(props) {
   };
 
   if (gameLaunch) {
-    return <GameBoard players={players} playersId={playersId} pseudo={props.pseudo} roundNumber={roundNumber} roundId={roundId} gameId={id} cards={cards} currentCard={currentCard} currentPlayer={currentPlayer} />;
+    return <GameBoard players={players} playersId={playersId} pseudo={props.pseudo} roundNumber={roundNumber} roundId={roundId} gameId={id} cards={cards} currentCard={currentCard} currentPlayer={currentPlayer} dbType={dbType} />;
   }
 
   return (

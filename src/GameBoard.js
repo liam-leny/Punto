@@ -23,6 +23,7 @@ function GameBoard(props) {
   const [isRoundFinished, setIsRoundFinished] = useState(false);
   const [roundWinners] = useState(new Array());
   const [isGameFinished, setIsGameFinished] = useState(false);
+  const [dbType] = useState(props.dbType);
 
 
   const toastRef = useRef();
@@ -39,7 +40,6 @@ function GameBoard(props) {
       console.log('RoundWinner', roundWinner)
       roundWinners.push(roundWinner)
       setIsRoundFinished(true)
-      setCurrentRound(prevRound => prevRound + 1);
       checkEndGame(roundWinner)
     });
 
@@ -56,6 +56,9 @@ function GameBoard(props) {
       setCurrentCardIndex(0)
       setPlayerTurn(0)
       setIsRoundFinished(false)
+      // TO DO : current round won't update
+      console.log('CURRENT ROUND', data.newCurrentRound)
+      setCurrentRound(prevRound => prevRound + 1)
       setRoundId(data.roundId)
     });
 
@@ -75,14 +78,24 @@ function GameBoard(props) {
    */
   async function checkVictory(x, y) {
     socket.current.emit('newCardPlaced', { x: x, y: y, players: props.players, cards: cards, currentPlayer: currentPlayer, currentCard: currentCard, currentCardIndex: currentCardIndex });
-    await axios.post('http://localhost:5000/api/cardmove', {
-      point_number: currentCard[1],
-      color: currentCard[0],
-      coord_x: x,
-      coord_y: y,
-      round_id: roundId,
-      player_id: props.playersId[currentPlayerIndex],
-    });
+    if (dbType === 'Relationnel') {
+      await axios.post('http://localhost:5000/api/cardmove', {
+        point_number: currentCard[1],
+        color: currentCard[0],
+        coord_x: x,
+        coord_y: y,
+        round_id: roundId,
+        player_id: props.playersId[currentPlayerIndex],
+      });
+    } else {
+      await axios.patch(`http://localhost:5000/api/mongo/cardmove/${props.gameId}`, {
+        pseudo: currentPlayer,
+        point_number: currentCard[1],
+        color: currentCard[0],
+        coord_x: x,
+        coord_y: y,
+      });
+    }
     const currentColor = currentCard[0];
     let nbCardsSeries = 4;
     if (playerNumber === 2) {
@@ -186,9 +199,11 @@ function GameBoard(props) {
   const handlePlayerTurnChange = async (x, y) => {
     const victory = await checkVictory(x, y)
     if (victory) {
-      await axios.patch(`http://localhost:5000/api/round/${roundId}/`, {
-        winner: props.playersId[currentPlayerIndex],
-      });
+      if (dbType === 'Relationnel') {
+        await axios.patch(`http://localhost:5000/api/round/${roundId}/`, {
+          winner: props.playersId[currentPlayerIndex],
+        });
+      }
       socket.current.emit('winner', currentPlayer)
     }
   };
@@ -201,62 +216,67 @@ function GameBoard(props) {
       const indexGameWinner = props.players.indexOf(roundWinner)
       const winner = props.playersId[indexGameWinner]
       if (pseudo === currentPlayer) {
-        await axios.patch(`http://localhost:5000/api/game/${props.gameId}/`, {
-          winner: winner,
-        });
+        if (dbType === 'Relationnel') {
+          await axios.patch(`http://localhost:5000/api/game/${props.gameId}/`, {
+            winner: winner,
+          });
+        }
       }
       setIsGameFinished(true)
     } else {
       if (pseudo === currentPlayer) {
         toastRef.current.show({ severity: 'info', summary: `Lancement de la manche ${currentRound + 2}`, detail: 'Dans 5s, la prochaine manche commencera' });
-        const response = await axios.post(`http://localhost:5000/api/round/`, {
-          current_round_number: currentRound,
-          game_id: props.gameId
-        });
-        const roundId = response.data.round_id;
+        let roundId;
+        if (dbType === 'Relationnel') {
+          const response = await axios.post(`http://localhost:5000/api/round/`, {
+            current_round_number: currentRound,
+            game_id: props.gameId
+          });
+          roundId = response.data.round_id;
+        }
         socket.current.emit('newRound', { players: props.players, roundWinner: roundWinner, currentRound: currentRound, gameId: props.gameId, roundId: roundId })
       }
     }
-};
+  };
 
 
 
 
-/**
- * Permet d'afficher le plateau 
- * @returns Un tableau contenant toutes les lignes du plateau
- */
-const BoardDisplay = () => {
-  let rows = [];
-  for (let i = 0; i < 6; i++) {
-    rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished} />)
+  /**
+   * Permet d'afficher le plateau 
+   * @returns Un tableau contenant toutes les lignes du plateau
+   */
+  const BoardDisplay = () => {
+    let rows = [];
+    for (let i = 0; i < 6; i++) {
+      rows.push(<Row key={i} i={i} size={6} currentCard={currentCard} board={board} playerTurn={playerTurn} handlePlayerTurnChange={handlePlayerTurnChange} pseudo={pseudo} currentPlayer={currentPlayer} isRoundFinished={isRoundFinished} />)
+    }
+    return rows;
   }
-  return rows;
-}
 
-return (
-  <div>
-    <Toast ref={toastRef} />
-    {
-      isGameFinished === true && <h1>Partie terminé <br></br> {roundWinners[currentRound - 1]} a gagné la partie</h1>
-    }
-    {
-      (isGameFinished === false && isRoundFinished === true) && <h1>Manche terminé <br></br> Le vainqueur de la manche est {roundWinners[currentRound - 1]}</h1>
-    }
-    {
-      isRoundFinished === false && (pseudo === currentPlayer ? <h1>C'est à votre tour de jouer</h1> : <h1>C'est au tour de {currentPlayer} de jouer</h1>)
-    }
-    <div className="container">
-      <div className="board">
-        {BoardDisplay()}
-      </div>
-      <div className={`square number-cards ${currentCard[0]}`}>
-        {currentCard[1]}
+  return (
+    <div>
+      <Toast ref={toastRef} />
+      {
+        isGameFinished === true && <h1>Partie terminé <br></br> {roundWinners[roundWinners.length -1]} a gagné la partie</h1>
+      }
+      {
+        (isGameFinished === false && isRoundFinished === true) && <h1>Manche terminé <br></br> Le vainqueur de la manche est {roundWinners[roundWinners.length -1]}</h1>
+      }
+      {
+        isRoundFinished === false && (pseudo === currentPlayer ? <h1>C'est à votre tour de jouer</h1> : <h1>C'est au tour de {currentPlayer} de jouer</h1>)
+      }
+      <div className="container">
+        <div className="board">
+          {BoardDisplay()}
+        </div>
+        <div className={`square number-cards ${currentCard[0]}`}>
+          {currentCard[1]}
+        </div>
       </div>
     </div>
-  </div>
 
-);
+  );
 }
 
 export default GameBoard;
