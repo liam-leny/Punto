@@ -1,6 +1,12 @@
+require('dotenv').config(); // Charge les variables d'environnement depuis le fichier .env
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const mongoose = require('mongoose');
+const fs = require('fs')
+const mysqldump = require('mysqldump')
+const sqlite3 = require('better-sqlite3');
+
 const { initializeSocket } = require('./socket');
 const dbMySQL = require('./mysql/mysql');
 const { query } = require('./sqlite/sqlite');
@@ -212,6 +218,129 @@ app.patch('/api/mongo/cardmove/:id', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de l\'insertion du mouvement de carte :', error);
     res.status(500).json({ error: 'Erreur lors de l\'insertion du mouvement de carte' });
+  }
+});
+
+//  Route pour vider toutes les données de la base (MySQL/SQLite)
+app.delete('/api/reset-database', (req, res) => {
+
+  // Désactiver temporairement les contraintes de clés étrangères
+  db.query('SET foreign_key_checks = 0', (err) => {
+    if (err) {
+      console.error('Erreur lors de la désactivation des contraintes de clés étrangères :', err);
+      res.status(500).json({ error: 'Erreur lors de la désactivation des contraintes de clés étrangères' });
+      return;
+    }
+  });
+
+  const tables = ['Game', 'Round', 'Player', 'CardMove'];
+
+  // Supprimer toutes les données de chaque table
+  tables.forEach((table) => {
+    db.query(`DELETE FROM ${table}`, (err, result) => {
+      if (err) {
+        console.error(`Erreur lors de la suppression des données de la table ${table} :`, err);
+        res.status(500).json({ error: `Erreur lors de la suppression des données de la table ${table}` });
+        return;
+      }
+    });
+  });
+
+  res.json({ success: true, message: 'Base de données vidée avec succès' });
+});
+
+// Route pour vider toutes les données de la base (MongoDB)
+app.delete('/api/mongo/reset-database', async (req, res) => {
+  try {
+    // Supprimer tous les documents de la collection Game
+    await Game.deleteMany();
+
+    res.json({ success: true, message: 'Base de données MongoDB vidée avec succès' });
+  } catch (error) {
+    console.error('Erreur lors de la suppression des données MongoDB :', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression des données MongoDB' });
+  }
+});
+
+// Route pour exporter les données depuis MySQL
+app.get('/api/mysql/export', async (req, res) => {
+  try {
+    await mysqldump({
+      connection: {
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_DATABASE,
+      },
+      dumpToFile: './backend//mysql/mysql-export.sql',
+    });
+
+    res.download('./backend/mysql/mysql-export.sql', 'mysql-export.sql', (err) => {
+      if (err) {
+        console.error('Erreur lors du téléchargement du fichier :', err);
+        res.status(500).json({ error: 'Erreur lors du téléchargement du fichier' });
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'export MySQL :', error);
+    res.status(500).json({ error: 'Erreur lors de l\'export MySQL' });
+  }
+});
+
+// Route pour exporter les données depuis SQLite
+app.get('/api/sqlite/export', (req, res) => {
+  const fileName = 'sqlite-export.sql';
+  const db = new sqlite3('./backend/sqlite/punto.db');
+  const data = db.serialize();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(fileName, buffer);
+
+  res.download(fileName, (err) => {
+    if (err) {
+      console.error('Erreur lors du téléchargement du fichier :', err);
+      res.status(500).json({ error: 'Erreur lors du téléchargement du fichier' });
+    } else {
+      fs.unlink(fileName, (err) => {
+        if (err) {
+          console.error('Erreur lors de la suppression du fichier :', err);
+        }
+      });
+    }
+  });
+});
+
+// Route pour exporter les données depuis MongoDB
+app.get('/api/mongo/export', async (req, res) => {
+  try {
+    const data = await Game.find({}).lean();
+
+    const jsonString = JSON.stringify(data, (key, value) => {
+      if (value instanceof mongoose.Types.ObjectId) {
+        return value.toString();
+      }
+      return value;
+    }, 2);
+    
+    const fileName = 'mongo-export.json';
+    console.log(jsonString)
+    fs.writeFileSync(fileName, jsonString);
+    res.setHeader('Content-Type', 'application/json');
+    
+    res.download(fileName, (err) => {
+      if (err) {
+        console.error('Erreur lors du téléchargement du fichier :', err);
+        res.status(500).json({ error: 'Erreur lors du téléchargement du fichier' });
+      } else {
+        fs.unlink(fileName, (err) => {
+          if (err) {
+            console.error('Erreur lors de la suppression du fichier :', err);
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'export depuis MongoDB :', error);
+    res.status(500).json({ error: 'Erreur lors de l\'export depuis MongoDB' });
   }
 });
 
