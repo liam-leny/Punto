@@ -3,11 +3,20 @@ import "./Cards.css";
 
 import { Toast } from 'primereact/toast';
 
-
+/**
+ * Correspond à chaque case du plateau
+ * @param {*} props 
+ * @returns 
+ */
 function Square(props) {
   const toastRef = useRef();
 
 
+  /**
+   * Fonction qui est appelée à chaque fois qu'un joueur pose une carte
+   * Permet de vérifier si le placement d'une carte est valide
+   * 
+   */
   const addCard = () => {
     if (props.isRoundFinished === true) {
       toastRef.current.show({ severity: 'error', summary: 'Mouvement impossible', detail: 'La manche est terminée' });

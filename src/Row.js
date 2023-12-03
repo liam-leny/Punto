@@ -2,9 +2,17 @@ import React from "react";
 import Square from "./Square";
 import "./GameBoard.css"
 
-
+/**
+ * Correspond à chaque ligne du plateau de jeu
+ * @param {*} props 
+ * @returns 
+ */
 function Row(props) {
 
+  /**
+   * Permet d'insérer des cases à l'intérieur de chaque ligne
+   * @returns 
+   */
   const squareCreation = () => {
     let squares = [];
     for (let squareNum = 0; squareNum < props.size; squareNum++) {

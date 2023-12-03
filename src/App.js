@@ -1,6 +1,6 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import 'primereact/resources/themes/vela-orange/theme.css'
-import './App.css';
+import "primereact/resources/themes/vela-orange/theme.css";
+import "./App.css";
 
 import PlayerForm from "./PlayerForm";
 import DataManagementTool from "./DataManagementTool";
@@ -8,7 +8,7 @@ import DataManagementTool from "./DataManagementTool";
 const App = () => {
   return (
     <div className="App">
-      <header className='App-header'>
+      <header className="App-header">
         <BrowserRouter>
           <Routes>
             {/*La route initiale est obligatoire et correspond au menu du site*/}
