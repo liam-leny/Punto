@@ -12,6 +12,8 @@ const dbMySQL = require('./mysql/mysql');
 const { query } = require('./sqlite/sqlite');
 const { dbMongo } = require('./mongo/mongo');
 const { Game } = require('./mongo/script_creation');
+const GenerateFakeData = require('./generateData');
+const generateFakeMongoData = require('./generateMongoData');
 
 
 const app = express();
@@ -181,8 +183,7 @@ app.post('/api/mongo/game', async (req, res) => {
 
     // Enregistrer la nouvelle partie dans la base de données
     const savedGame = await newGame.save();
-    console.log(savedGame)
-    res.json(savedGame._id); // Renvoyer la partie créée en réponse
+    res.json(savedGame._id);
   } catch (error) {
     console.error('Erreur lors de la création de la partie :', error);
     res.status(500).json({ error: 'Erreur lors de la création de la partie' });
@@ -322,7 +323,6 @@ app.get('/api/mongo/export', async (req, res) => {
     }, 2);
     
     const fileName = 'mongo-export.json';
-    console.log(jsonString)
     fs.writeFileSync(fileName, jsonString);
     res.setHeader('Content-Type', 'application/json');
     
@@ -343,6 +343,24 @@ app.get('/api/mongo/export', async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de l\'export depuis MongoDB' });
   }
 });
+
+// Route pour générer des données aléatoires dans les bases (mysql/sqlite)
+app.post('/api/fakedata', async (req, res) => {
+  try {
+    GenerateFakeData();
+  } catch (error) {
+    console.error('Erreur lors de la génération de données aléatoires :', error);
+    res.status(500).json({ error: 'Erreur lors de la génération de données aléatoires ' });
+  }});
+
+  // Route pour générer des données aléatoires dans la base MongoDB
+app.post('/api/mongo/fakedata', async (req, res) => {
+  try {
+    generateFakeMongoData();
+  } catch (error) {
+    console.error('Erreur lors de la génération de données aléatoires :', error);
+    res.status(500).json({ error: 'Erreur lors de la génération de données aléatoires ' });
+  }});
 
 // Démarrer le serveur Express
 const port = 5000;

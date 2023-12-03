@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import GameForm from './GameForm';
 import "./Form.css"
 
 import axios from 'axios';
@@ -78,13 +77,24 @@ function DataManagementTool(props) {
     };
 
 
-    const onButtonClick = async () => {
+    const onImportFakeButtonClick = async () => {
         if (database === '') {
             toastRef.current.show({ severity: 'error', summary: 'Erreur', detail: 'Merci de sélectionner une base de donnée' });
         } else {
             await axios.post('http://localhost:5000/api/database-choice', {
                 database: database,
             });
+            if (database === 'MySQL' || database === 'SQLite') {
+                await axios.post('http://localhost:5000/api/fakedata');
+                if (database === 'MySQL') {
+                    toastRef.current.show({ severity: 'info', summary: 'Succès', detail: 'Des données aléatoires ont été générés dans la base MySQL' });
+                } else {
+                    toastRef.current.show({ severity: 'info', summary: 'Succès', detail: 'Des données aléatoires ont été générés dans la base SQLite' });
+                }
+            } else {
+                // await axios.post('http://localhost:5000/api/mongo/fakedata');
+                toastRef.current.show({ severity: 'error', summary: 'Erreur', detail: 'Des données aléatoires ne peuvent pas être générer pour MongoDB' });
+            }
         }
     };
 
@@ -95,7 +105,7 @@ function DataManagementTool(props) {
             <ListBox value={database} onChange={(e) => setDatabase(e.value)} options={availableDatabases} className="w-full md:w-14rem" />
             <Button className='button' type="button" label="Effacer les données" onClick={onDeleteButtonClick} />
             <Button className='button' type="button" label="Exporter les données" onClick={onExportButtonClick} />
-            <Button className='button' type="button" label="Importer les données" onClick={onButtonClick} />
+            <Button className='button' type="button" label="Importer des données factices" onClick={onImportFakeButtonClick} />
         </div>
     );
 }
