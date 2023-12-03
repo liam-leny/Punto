@@ -1,70 +1,70 @@
-# Getting Started with Create React App
+#Punto
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Premier projet de la ressource R5.10 - Nouveaux paradigmes de base de données.
 
-## Available Scripts
+BUT3 (Réalisation d'applications : conception, développement, validation)
 
-In the project directory, you can run:
 
-### `npm start`
+##Description
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Le projet vise à créer une application mettant en œuvre le jeu de société Punto. L'objectif est de développer une application complète qui intègre la mécanique du jeu, le stockage des données dans trois types de bases de données différentes, et un outil de gestion des données.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Les trois bases de données utilisées sont MySQL, SQLite et MongoDB. 
+L'outil de gestion de données permet de sélectionner une des trois bases puis de : 
+- supprimer toutes les données
+- exporter les données
+- insérer des données factices
 
-### `npm test`
+##Règles du jeu
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Pour télécharger les règles officielles du Punto, vous pouvez cliquer sur ce [lien]( https://www.atalia-jeux.com/index.php?controller=attachment&id_attachment=182 "Règles du jeu Punto").
 
-### `npm run build`
+Le jeu est disponible de 2 à 4 joueurs. 
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+###Règles du jeu non implémentées
+- Le premier joueur de la partie est sélectionné aléatoirement, ce n'est pas forcément le plus jeune.
+- La couleur neutre n'est pas prise en compte dans la version 3 joueurs.
+- Le plateau de jeu est fixe et est composé de 6 lignes de 6 cases. Les joueurs ne peuvent donc pas définir eux-mêmes leur propre carré de jeu de 6×6 cartes.
+- Le gagnant n'enlève pas la carte avec le plus de points dans sa série. Il peut donc de nouveau l'utiliser à la prochaine manche.
+- La fonction de jeu par équipe pour 4 joueurs.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+##Installation
 
-### `npm run eject`
+Pour installer toutes les dépendances nécessaires : 
+```npm i```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Pour lancer le serveur (Express et les trois bases de données en local) :
+- Ajouter un fichier .env à la racine du projet :
+    ```
+    DB_HOST=<mysql_url>
+    DB_USER=<mysql_host>
+    DB_PASSWORD=<mysql_password>
+    DB_DATABASE=<mysql_database>
+    ```
+- Créer une base de donnée nommé "punto" sur votre serveur MongoDB
+- Lancer le serveur (express et les trois bases de donées) :
+    ```node backend/server.js```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Pour lancer le jeu :
+```npm run start```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Vous arriverez sur la page d'accueil du jeu. Pour pouvoir accéder à l'outil de gestion de données, vous devez rajouter "/admin" à l'url.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-## Learn More
+##Utilisation de WebSockets et restriction d'accès
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Le jeu utilise des WebSockets pour assurer une communication en temps réel entre les joueurs. Chaque joueur doit jouer sur un onglet différent, permettant ainsi une expérience de jeu collaborative et interactive.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Il est à noter qu'un joueur ne peut rejoindre la partie que d'un hôte ayant sélectionné la même base de données.
 
-### Code Splitting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+##Améliorations futures
+Voici quelques pistes d'amélirations du projet : 
+- Déploiement du jeu : mettre en place un déploiement complet de l'application, permettant un accès en ligne facile et une expérience utilisateur sans heurts.
+- Rendu des cartes authentique : améliorer le rendu visuel des cartes pour les rendre plus fidèles à celles du jeu officiel, offrant ainsi une esthétique plus immersive et plaisante.
+- Équilibre de la partie à 3 joueurs : introduire la notion de couleur neutre pour garantir une équité dans les parties à 3 joueurs. Ceci permettra d'éviter des situations inattendues et d'assurer une expérience de jeu équilibrée.
 
-### Analyzing the Bundle Size
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+##Auteur 
+Liam Le Ny
