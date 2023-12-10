@@ -24,7 +24,11 @@ function GameForm(props) {
   const [currentCard, setCurrentCard] = useState(null);
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [dbType] = useState(
-    props.database === "MongoDB" ? "NoSQL" : "Relationnel"
+    props.database === "MongoDB"
+      ? "NoSQL"
+      : props.database === "Neo4j"
+      ? "Graph"
+      : "Relationnel"
   );
 
   const toastRef = useRef();
@@ -74,7 +78,7 @@ function GameForm(props) {
       } catch (error) {
         console.error("Erreur lors de la création de la partie :", error);
       }
-    } else {
+    } else if (dbType === "NoSQL") {
       const response = await axios.post(
         "http://localhost:5000/api/mongo/game",
         {
@@ -83,6 +87,22 @@ function GameForm(props) {
       );
       gameId = response.data;
       addNewPlayer(undefined, props.pseudo);
+    } else {
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/api/neo4j/game",
+          {
+            pseudo: props.pseudo,
+            round_number: roundNumber,
+          }
+        );
+        gameId = response.data.game_id;
+        setRoundId(response.data.round_id)
+        const playerId = response.data.player_id;
+        addNewPlayer(playerId, props.pseudo);
+      } catch (error) {
+        console.error("Erreur lors de la requête Axios :", error);
+      }
     }
     socket.current.emit("joinRoom", gameId);
     setId(gameId);
@@ -133,6 +153,24 @@ function GameForm(props) {
         } catch (error) {
           console.error("Erreur lors de la participation à la partie :", error);
         }
+      } else if (dbType === "Graph") {
+        try {
+          socket.current.emit("joinRoom", Number(id));
+          const response = await axios.post(
+            `http://localhost:5000/api/neo4j/game/${id}/join`,
+            {
+              pseudo: props.pseudo,
+            }
+          );
+          const playerId = response.data.player_id;
+          socket.current.emit("newPlayer", {
+            id: Number(id),
+            pseudo: props.pseudo,
+            playerId: playerId,
+          });
+        } catch (error) {
+          console.error("Erreur lors de la participation à la partie :", error);
+        }
       } else {
         socket.current.emit("joinRoom", id);
         socket.current.emit("newPlayer", {
@@ -165,7 +203,6 @@ function GameForm(props) {
       console.log("launchGame", id);
       const cards = distributeCards(players.length);
       if (id) {
-        let roundId;
         if (dbType === "Relationnel") {
           const response = await axios.post(
             `http://localhost:5000/api/round/`,
@@ -175,9 +212,7 @@ function GameForm(props) {
             }
           );
           roundId = response.data.round_id;
-          console.log(cards);
-          console.log(players);
-          console.log(id);
+          setRoundId(roundId)
         }
         socket.current.emit("startGame", {
           id: id,

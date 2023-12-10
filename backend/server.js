@@ -11,6 +11,7 @@ const { initializeSocket } = require("./socket");
 const dbMySQL = require("./mysql/mysql");
 const { query } = require("./sqlite/sqlite");
 const { dbMongo } = require("./mongo/mongo");
+const neo4j = require("./neo4j/neo4j");
 const { Game } = require("./mongo/script_creation");
 const GenerateFakeData = require("./generateData");
 const generateFakeMongoData = require("./generateMongoData");
@@ -34,6 +35,8 @@ app.post("/api/database-choice", (req, res) => {
     db = { query };
   } else if (database === "MongoDB") {
     db = dbMongo;
+  } else if (database === "Neo4j") {
+    db = neo4j;
   }
   res.json({ success: true });
 });
@@ -68,11 +71,9 @@ app.post("/api/game", (req, res) => {
               "Erreur lors de l'inscription du joueur à la partie :",
               err
             );
-            res
-              .status(500)
-              .json({
-                error: "Erreur lors de l'inscription du joueur à la partie",
-              });
+            res.status(500).json({
+              error: "Erreur lors de l'inscription du joueur à la partie",
+            });
             return;
           }
 
@@ -100,11 +101,9 @@ app.post("/api/game/:id/join", (req, res) => {
           "Erreur lors de l'inscription du joueur à la partie :",
           err
         );
-        res
-          .status(500)
-          .json({
-            error: "Erreur lors de l'inscription du joueur à la partie",
-          });
+        res.status(500).json({
+          error: "Erreur lors de l'inscription du joueur à la partie",
+        });
         return;
       }
 
@@ -233,7 +232,7 @@ app.post("/api/mongo/game", async (req, res) => {
 });
 
 // Route pour insérer des mouvement de carte à une partie
-app.patch("/api/mongo/cardmove/:id", async (req, res) => {
+app.post("/api/mongo/cardmove/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const moment = new Date();
@@ -266,6 +265,155 @@ app.patch("/api/mongo/cardmove/:id", async (req, res) => {
   }
 });
 
+// Route pour créer une nouvelle partie
+app.post("/api/neo4j/game", async (req, res) => {
+  const creation_date = new Date().toISOString();
+  const pseudo = req.body.pseudo;
+  const round_number = req.body.round_number;
+
+  try {
+    const result = await db.query(
+      "CREATE (g:Game {creation_date: $creation_date, round_number: $round_number})-[:HAS_ROUND]->(r:Round) RETURN id(g) AS game_id, id(r) AS round_id",
+      { creation_date, round_number }
+    );
+    const game_id = result[0].game_id.low;
+    const round_id = result[0].round_id.low;
+
+    const resultPlayer = await db.query(
+      "MATCH (g:Game) WHERE id(g) = $game_id CREATE (p:Player {pseudo: $pseudo})-[:PARTICIPATES_IN]->(g) RETURN id(p) AS player_id",
+      { game_id, pseudo }
+    );
+
+    const player_id = resultPlayer[0].player_id.low;
+
+    res.json({ game_id, round_id, player_id });
+  } catch (error) {
+    console.error("Erreur lors de la création de la partie :", error);
+    res.status(500).json({ error: "Erreur lors de la création de la partie" });
+  }
+});
+
+// Route pour rejoindre une partie
+app.post("/api/neo4j/game/:id/join", async (req, res) => {
+  const game_id = Number(req.params.id);
+  const pseudo = req.body.pseudo;
+
+  try {
+    const result = await db.query(
+      "MATCH (g:Game) WHERE id(g) = $game_id CREATE (p:Player {pseudo: $pseudo})-[:PARTICIPATES_IN]->(g) RETURN id(p) AS player_id",
+      { game_id, pseudo }
+    );
+
+    console.log(result);
+    const player_id = result[0].player_id.low;
+    res.json({ player_id });
+  } catch (error) {
+    console.error(
+      "Erreur lors de l'inscription du joueur à la partie :",
+      error
+    );
+    res
+      .status(500)
+      .json({ error: "Erreur lors de l'inscription du joueur à la partie" });
+  }
+});
+
+// Route pour mettre à jour une partie
+app.patch("/api/neo4j/game/:id", async (req, res) => {
+  const game_id = Number(req.params.id);
+  const winner = req.body.winner;
+  const end_date = new Date().toISOString();
+
+  try {
+    await db.query(
+      "MATCH (g:Game) WHERE id(g) = $game_id SET g.end_date = $end_date",
+      { game_id, end_date }
+    );
+
+    await db.query(
+      "MATCH (g:Game), (p:Player) WHERE id(g) = $game_id AND id(p) = $winner CREATE (p)-[:WINNER_OF]->(g)",
+      { game_id, winner }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour de la partie :", error);
+    res
+      .status(500)
+      .json({ error: "Erreur lors de la mise à jour de la partie" });
+  }
+});
+
+// Route pour créer une nouvelle manche
+app.post("/api/neo4j/round", async (req, res) => {
+  const creation_date = new Date().toISOString();
+  const current_round_number = req.body.current_round_number;
+  const game_id = Number(req.body.game_id);
+
+  try {
+    const result = await db.query(
+      "MATCH (g:Game) WHERE id(g) = $game_id CREATE (r:Round {creation_date: $creation_date, current_round_number: $current_round_number})-[:BELONGS_TO]->(g) RETURN id(r) AS round_id",
+      { creation_date, current_round_number, game_id }
+    );
+
+    const round_id = result[0].round_id.low;
+    res.json({ round_id });
+  } catch (error) {
+    console.error("Erreur lors de la création de la manche :", error);
+    res.status(500).json({ error: "Erreur lors de la création de la manche" });
+  }
+});
+
+// Route pour mettre à jour une manche
+app.patch("/api/neo4j/round/:id", async (req, res) => {
+  const round_id = Number(req.params.id);
+  const winner = req.body.winner;
+  const end_date = new Date().toISOString();
+
+  try {
+    await db.query(
+      "MATCH (r:Round) WHERE id(r) = $round_id SET r.end_date = $end_date",
+      { round_id, end_date }
+    );
+
+    await db.query(
+      "MATCH (r:Round), (p:Player) WHERE id(r) = $round_id AND id(p) = $winner CREATE (p)-[:WINNER_OF]->(r)",
+      { round_id, winner }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour de la manche :", error);
+    res
+      .status(500)
+      .json({ error: "Erreur lors de la mise à jour de la manche" });
+  }
+});
+
+// Route pour créer une nouveau coup
+app.post("/api/neo4j/cardmove/", async (req, res) => {
+  console.log(req.body);
+  const moment = new Date().toISOString();
+  const point_number = req.body.point_number;
+  const color = req.body.color;
+  const coord_x = req.body.coord_x;
+  const coord_y = req.body.coord_y;
+  const round_id = req.body.round_id;
+  const player_id = req.body.player_id;
+
+  try {
+    await db.query(
+      "MATCH (r:Round) WHERE id(r) = $round_id MATCH (p:Player) WHERE id(p) = $player_id CREATE (cm:CardMove {moment: $moment, point_number: $point_number, color: $color, coord_x: $coord_x, coord_y: $coord_y})-[:MADE_MOVE]->(p)-[:MOVE_IN]->(r)",
+      { moment, point_number, color, coord_x, coord_y, round_id, player_id }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Erreur lors de la création du coup :", error);
+    res.status(500).json({ error: "Erreur lors de la création du coup" });
+  }
+});
+
 //  Route pour vider toutes les données de la base (MySQL/SQLite)
 app.delete("/api/reset-database", (req, res) => {
   // Désactiver temporairement les contraintes de clés étrangères
@@ -275,12 +423,10 @@ app.delete("/api/reset-database", (req, res) => {
         "Erreur lors de la désactivation des contraintes de clés étrangères :",
         err
       );
-      res
-        .status(500)
-        .json({
-          error:
-            "Erreur lors de la désactivation des contraintes de clés étrangères",
-        });
+      res.status(500).json({
+        error:
+          "Erreur lors de la désactivation des contraintes de clés étrangères",
+      });
       return;
     }
   });
@@ -295,11 +441,9 @@ app.delete("/api/reset-database", (req, res) => {
           `Erreur lors de la suppression des données de la table ${table} :`,
           err
         );
-        res
-          .status(500)
-          .json({
-            error: `Erreur lors de la suppression des données de la table ${table}`,
-          });
+        res.status(500).json({
+          error: `Erreur lors de la suppression des données de la table ${table}`,
+        });
         return;
       }
     });
@@ -323,6 +467,29 @@ app.delete("/api/mongo/reset-database", async (req, res) => {
     res
       .status(500)
       .json({ error: "Erreur lors de la suppression des données MongoDB" });
+  }
+});
+
+// Route pour vider toutes les données de la base (Neo4j)
+app.delete("/api/neo4j/reset-database", async (req, res) => {
+
+  try {
+    await db.query(
+      "MATCH (n) DETACH DELETE n",
+    );
+
+    res.json({
+      success: true,
+      message: "Base de données Neo4j vidée avec succès",
+    });
+  } catch (error) {
+    console.error(
+      "Erreur lors de la suppression des données Neo4j :",
+      error
+    );
+    res
+      .status(500)
+      .json({ error: "Erreur lors de la suppression des données Neo4j" });
   }
 });
 

@@ -98,8 +98,8 @@ function GameBoard(props) {
         round_id: roundId,
         player_id: props.playersId[currentPlayerIndex],
       });
-    } else {
-      await axios.patch(
+    } else if (dbType === "NoSQL") {
+      await axios.post(
         `http://localhost:5000/api/mongo/cardmove/${props.gameId}`,
         {
           pseudo: currentPlayer,
@@ -109,6 +109,15 @@ function GameBoard(props) {
           coord_y: y,
         }
       );
+    } else {
+      await axios.post(`http://localhost:5000/api/neo4j/cardmove/`, {
+        point_number: currentCard[1],
+        color: currentCard[0],
+        coord_x: x,
+        coord_y: y,
+        round_id: roundId,
+        player_id: props.playersId[currentPlayerIndex],
+      });
     }
     const currentColor = currentCard[0];
     let nbCardsSeries = 4;
@@ -244,6 +253,10 @@ function GameBoard(props) {
         await axios.patch(`http://localhost:5000/api/round/${roundId}/`, {
           winner: props.playersId[currentPlayerIndex],
         });
+      } else if (dbType === "Graph") {
+        await axios.patch(`http://localhost:5000/api/neo4j/round/${roundId}/`, {
+          winner: props.playersId[currentPlayerIndex],
+        });
       }
       socket.current.emit("winner", currentPlayer);
     }
@@ -267,6 +280,13 @@ function GameBoard(props) {
           await axios.patch(`http://localhost:5000/api/game/${props.gameId}/`, {
             winner: winner,
           });
+        } else if (dbType === "Graph") {
+          await axios.patch(
+            `http://localhost:5000/api/neo4j/game/${props.gameId}/`,
+            {
+              winner: winner,
+            }
+          );
         }
       }
       setIsGameFinished(true);
@@ -281,6 +301,15 @@ function GameBoard(props) {
         if (dbType === "Relationnel") {
           const response = await axios.post(
             `http://localhost:5000/api/round/`,
+            {
+              current_round_number: currentRound,
+              game_id: props.gameId,
+            }
+          );
+          roundId = response.data.round_id;
+        } else if (dbType === "Graph") {
+          const response = await axios.post(
+            `http://localhost:5000/api/neo4j/round/`,
             {
               current_round_number: currentRound,
               game_id: props.gameId,

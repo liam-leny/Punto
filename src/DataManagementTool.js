@@ -9,7 +9,7 @@ import { Toast } from "primereact/toast";
 
 function DataManagementTool(props) {
   const [database, setDatabase] = useState("");
-  const [availableDatabases] = useState(["MySQL", "SQLite", "MongoDB"]);
+  const [availableDatabases] = useState(["MySQL", "SQLite", "MongoDB", "Neo4j"]);
   const toastRef = useRef();
 
   const onDeleteButtonClick = async () => {
@@ -38,12 +38,19 @@ function DataManagementTool(props) {
             detail: "Toutes les données de la base SQLite ont été supprimés",
           });
         }
-      } else {
+      } else if (database === "MongoDB") {
         await axios.delete("http://localhost:5000/api/mongo/reset-database");
         toastRef.current.show({
           severity: "info",
           summary: "Succès",
           detail: "Toutes les données de la base MongoDB ont été supprimés",
+        });
+      } else {
+        await axios.delete("http://localhost:5000/api/neo4j/reset-database");
+        toastRef.current.show({
+          severity: "info",
+          summary: "Succès",
+          detail: "Toutes les données de la base Neo4j ont été supprimés",
         });
       }
     }

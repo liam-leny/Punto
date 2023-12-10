@@ -16,6 +16,7 @@
     "mongoose": "^8.0.1",
     "mysql2": "^3.6.3",
     "mysqldump": "^3.2.0",
+    "neo4j-driver": "^5.15.0",
     "primereact": "^10.0.9",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
