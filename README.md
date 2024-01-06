@@ -7,13 +7,13 @@ BUT3 (Réalisation d'applications : conception, développement, validation)
 
 ## Description
 
-Le projet vise à créer une application mettant en œuvre le jeu de société Punto. L'objectif est de développer une application complète qui intègre la mécanique du jeu, le stockage des données dans trois types de bases de données différentes, et un outil de gestion des données.
+Le projet vise à créer une application mettant en œuvre le jeu de société Punto. L'objectif est de développer une application complète qui intègre la mécanique du jeu, le stockage des données dans quatre types de bases de données différentes, ainsi q'un outil de gestion des données.
 
-Les trois bases de données utilisées sont MySQL, SQLite et MongoDB.
-L'outil de gestion de données permet de sélectionner une des trois bases puis de : 
+Les quatre bases de données utilisées sont MySQL, SQLite, MongoDB et Neo4j.
+L'outil de gestion de données permet de sélectionner une des quatre bases puis de : 
 - supprimer toutes les données
-- exporter les données
-- insérer des données factices
+- exporter les données (non disponible pour Neo4j)
+- insérer des données factices (non disponible pour MongoDB et Neo4j)
 
 ## Règles du jeu
 
@@ -34,22 +34,23 @@ Le jeu est disponible de 2 à 4 joueurs.
 Pour installer toutes les dépendances nécessaires : 
 ```npm i```
 
-Pour lancer le serveur (Express et les trois bases de données en local) :
-- Ajouter un fichier .env à la racine du projet :
+Pour lancer le serveur (Express et les quatre bases de données en local) :
+- Ajoute un fichier .env à la racine du projet :
     ```
     DB_HOST=<mysql_url>
     DB_USER=<mysql_host>
     DB_PASSWORD=<mysql_password>
     DB_DATABASE=<mysql_database>
     ```
-- Créer une base de données nommé "punto" sur votre serveur MongoDB
-- Lancer le serveur (express et les trois bases de donées) :
+- Crée une base de données nommée "punto" sur votre serveur MongoDB
+- Crée une base de données nommée "punto" avec le mot de passe "puntopunto" sur votre serveur Neo4j
+- Lance le serveur (express et les quatre bases de données) :
     ```node backend/server.js```
 
 Pour lancer le jeu :
 ```npm run start```
 
-Vous arriverez sur la page d'accueil du jeu. Pour pouvoir accéder à l'outil de gestion de données, vous devez rajouter "/admin" à l'url.
+Vous arriverez sur la page d'accueil du jeu. Pour pouvoir accéder à l'outil de gestion de données, vous ajoutez "/admin" à l'url.
 
 
 ## Utilisation de WebSockets et restriction d'accès
